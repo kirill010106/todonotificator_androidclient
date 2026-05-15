@@ -5,11 +5,7 @@ class User {
   final String nickname;
   final String email;
 
-  const User({
-    required this.id,
-    required this.nickname,
-    required this.email,
-  });
+  const User({required this.id, required this.nickname, required this.email});
 
   factory User.fromMap(Map<String, Object?> map) {
     return User(
@@ -51,9 +47,7 @@ class Task {
       title: map['title'] as String,
       isDone: (map['is_done'] as int) == 1,
       isBurned: ((map['is_burned'] as int?) ?? 0) == 1,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        map['created_at'] as int,
-      ),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
       note: map['note'] as String?,
       categoryId: map['category_id'] as int?,
       reminderType: reminderTypeFromString(reminderValue),
@@ -127,12 +121,7 @@ class TaskItem {
     );
   }
 
-  TaskItem copyWith({
-    int? taskId,
-    String? text,
-    bool? isDone,
-    int? position,
-  }) {
+  TaskItem copyWith({int? taskId, String? text, bool? isDone, int? position}) {
     return TaskItem(
       id: id,
       taskId: taskId ?? this.taskId,
@@ -148,29 +137,17 @@ class Category {
   final String name;
   final int color;
 
-  const Category({
-    required this.id,
-    required this.name,
-    required this.color,
-  });
+  const Category({required this.id, required this.name, required this.color});
 }
 
 class CategoryStats {
   final Category category;
   final int taskCount;
 
-  const CategoryStats({
-    required this.category,
-    required this.taskCount,
-  });
+  const CategoryStats({required this.category, required this.taskCount});
 }
 
-enum ReminderType {
-  once,
-  daily,
-  weekly,
-  custom,
-}
+enum ReminderType { once, daily, weekly, custom }
 
 ReminderType? reminderTypeFromString(String? value) {
   if (value == null) {
@@ -184,11 +161,7 @@ ReminderType? reminderTypeFromString(String? value) {
   return null;
 }
 
-enum TaskFilter {
-  all,
-  active,
-  completed,
-}
+enum TaskFilter { all, active, completed }
 
 class TargetOption {
   final String id;
@@ -229,4 +202,103 @@ class AuthResult {
   }
 
   bool get isSuccess => user != null;
+}
+
+// ---------------------------------------------------------------------------
+// Gamification
+// ---------------------------------------------------------------------------
+
+enum XpEvent {
+  pomodoroComplete(10),
+  taskComplete(25),
+  taskAdded(2),
+  taskBurned(-5),
+  taskItemDone(5),
+  streakBonus(15),
+  achievementUnlock(0); // reward stored in Achievement itself
+
+  const XpEvent(this.xpDelta);
+  final int xpDelta;
+}
+
+class UserProgress {
+  final int totalXp;
+  final int level;
+  final int xpInCurrentLevel;
+  final int xpForNextLevel;
+  final int streakDays;
+
+  const UserProgress({
+    required this.totalXp,
+    required this.level,
+    required this.xpInCurrentLevel,
+    required this.xpForNextLevel,
+    required this.streakDays,
+  });
+
+  double get progressFraction =>
+      xpForNextLevel == 0 ? 1.0 : xpInCurrentLevel / xpForNextLevel;
+
+  /// Derives level/progress from a flat [totalXp] value.
+  static UserProgress fromTotalXp(int totalXp, {int streakDays = 0}) {
+    int remaining = totalXp;
+    int level = 1;
+    while (true) {
+      final needed = 100 * level * level;
+      if (remaining < needed) break;
+      remaining -= needed;
+      level++;
+    }
+    final xpForNext = 100 * level * level;
+    return UserProgress(
+      totalXp: totalXp,
+      level: level,
+      xpInCurrentLevel: remaining,
+      xpForNextLevel: xpForNext,
+      streakDays: streakDays,
+    );
+  }
+
+  UserProgress copyWith({
+    int? totalXp,
+    int? streakDays,
+  }) {
+    final base = totalXp ?? this.totalXp;
+    final derived = UserProgress.fromTotalXp(base, streakDays: streakDays ?? this.streakDays);
+    return derived;
+  }
+}
+
+class AchievementDefinition {
+  final String id;
+  final String title;
+  final String description;
+  final String icon; // emoji
+  final int xpReward;
+
+  const AchievementDefinition({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.xpReward,
+  });
+}
+
+class Achievement {
+  final AchievementDefinition definition;
+  final bool isUnlocked;
+  final DateTime? unlockedAt;
+
+  const Achievement({
+    required this.definition,
+    required this.isUnlocked,
+    this.unlockedAt,
+  });
+
+  String get id => definition.id;
+  String get title => definition.title;
+  String get description => definition.description;
+  String get icon => definition.icon;
+  int get xpReward => definition.xpReward;
 }

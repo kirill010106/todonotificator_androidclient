@@ -22,7 +22,7 @@ class LocalDatabase {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE users ('
@@ -69,6 +69,22 @@ class LocalDatabase {
           'value TEXT'
           ')',
         );
+        await db.execute(
+          'CREATE TABLE user_xp ('
+          'user_id INTEGER PRIMARY KEY, '
+          'total_xp INTEGER NOT NULL DEFAULT 0, '
+          'streak_days INTEGER NOT NULL DEFAULT 0, '
+          'last_active_date TEXT'
+          ')',
+        );
+        await db.execute(
+          'CREATE TABLE achievements ('
+          'id TEXT NOT NULL, '
+          'user_id INTEGER NOT NULL, '
+          'unlocked_at INTEGER NOT NULL, '
+          'PRIMARY KEY (id, user_id)'
+          ')',
+        );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -100,6 +116,24 @@ class LocalDatabase {
           await db.execute(
             'ALTER TABLE tasks ADD COLUMN is_burned INTEGER '
             'NOT NULL DEFAULT 0',
+          );
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS user_xp ('
+            'user_id INTEGER PRIMARY KEY, '
+            'total_xp INTEGER NOT NULL DEFAULT 0, '
+            'streak_days INTEGER NOT NULL DEFAULT 0, '
+            'last_active_date TEXT'
+            ')',
+          );
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS achievements ('
+            'id TEXT NOT NULL, '
+            'user_id INTEGER NOT NULL, '
+            'unlocked_at INTEGER NOT NULL, '
+            'PRIMARY KEY (id, user_id)'
+            ')',
           );
         }
       },

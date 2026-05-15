@@ -3,10 +3,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
+import '../../app/timer_controller.dart';
 import '../../data/models.dart';
+import '../../services/gamification_service.dart';
 import '../../ui/theme/app_colors.dart';
 import '../login_screen.dart';
 import '../settings_screen.dart';
+import 'achievements_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -20,9 +23,11 @@ class _ProfileTabState extends State<ProfileTab> {
   TargetOption? _target;
   int _doneTasks = 0;
   int _burnedTasks = 0;
-  final int _streak = 0; // Hardcoded for now
   bool _isLoading = true;
   bool _showIntervals = true;
+  bool _didLoad = false;
+  TimerController? _timerController;
+  GamificationService? _gamification;
 
   static const List<TargetOption> _options = [
     TargetOption(
@@ -51,23 +56,43 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-    // Listen to timer to update pomodoros
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppScope.of(context).timer.addListener(_onTimerChanged);
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didLoad) {
+      _didLoad = true;
+      _loadData();
+    }
+    final timer = AppScope.of(context).timer;
+    if (_timerController != timer) {
+      _timerController?.removeListener(_onTimerChanged);
+      _timerController = timer;
+      _timerController?.addListener(_onTimerChanged);
+    }
+    final gamification = AppScope.of(context).gamification;
+    if (_gamification != gamification) {
+      _gamification?.removeListener(_onGamificationChanged);
+      _gamification = gamification;
+      _gamification?.addListener(_onGamificationChanged);
+    }
   }
 
   @override
   void dispose() {
-    AppScope.of(context).timer.removeListener(_onTimerChanged);
+    _timerController?.removeListener(_onTimerChanged);
+    _gamification?.removeListener(_onGamificationChanged);
     super.dispose();
   }
 
   void _onTimerChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
+  }
+
+  void _onGamificationChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _loadData() async {
@@ -129,9 +154,9 @@ class _ProfileTabState extends State<ProfileTab> {
               Text(
                 'Действительно выйти из аккаунта?\nВы перейдете на экран входа',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.4,
-                    ),
+                  color: AppColors.mutedText,
+                  height: 1.4,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -143,7 +168,10 @@ class _ProfileTabState extends State<ProfileTab> {
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primaryDark,
                       ),
-                      child: const Text('Отменить', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Отменить',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -157,7 +185,10 @@ class _ProfileTabState extends State<ProfileTab> {
                         shape: const StadiumBorder(),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Выйти', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Выйти',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
@@ -181,9 +212,9 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
     _loadData();
   }
 
@@ -195,6 +226,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
     final theme = Theme.of(context);
     final nickname = _user?.nickname ?? 'Пользователь';
+    final progress = _gamification?.progress;
+    final level = progress?.level ?? 1;
+    final streak = progress?.streakDays ?? 0;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -230,7 +264,11 @@ class _ProfileTabState extends State<ProfileTab> {
                 color: Color(0xFFE6F3EE),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.person, size: 40, color: AppColors.primaryDark),
+              child: const Icon(
+                Icons.person,
+                size: 40,
+                color: AppColors.primaryDark,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -238,32 +276,60 @@ class _ProfileTabState extends State<ProfileTab> {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
+            // Level badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F3EE),
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: const Text(
-                'Уровень 1  |  Опыт 0',
-                style: TextStyle(
+              child: Text(
+                'Уровень $level  |  ${progress?.totalXp ?? 0} XP',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryDark,
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // XP progress bar
+            if (progress != null) _buildXpBar(progress),
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(child: _buildStatBox('серия', _streak.toString(), Icons.local_fire_department, AppColors.mutedText)),
+                Expanded(
+                  child: _buildStatBox(
+                    'серия',
+                    streak.toString(),
+                    Icons.local_fire_department,
+                    streak > 0 ? const Color(0xFFFF7043) : AppColors.mutedText,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildStatBox('выполнено', _doneTasks.toString(), Icons.check_circle_outline, AppColors.primaryDark)),
+                Expanded(
+                  child: _buildStatBox(
+                    'выполнено',
+                    _doneTasks.toString(),
+                    Icons.check_circle_outline,
+                    AppColors.primaryDark,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildStatBox('сгорело', _burnedTasks.toString(), Icons.cancel_outlined, AppColors.error)),
+                Expanded(
+                  child: _buildStatBox(
+                    'сгорело',
+                    _burnedTasks.toString(),
+                    Icons.cancel_outlined,
+                    AppColors.error,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+            // Achievements button
+            _buildAchievementsButton(),
+            const SizedBox(height: 20),
             _buildGoalCard(theme),
           ],
         ),
@@ -271,7 +337,102 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  Widget _buildStatBox(String label, String value, IconData icon, Color iconColor) {
+  Widget _buildXpBar(UserProgress progress) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${progress.xpInCurrentLevel} / ${progress.xpForNextLevel} XP до ур. ${progress.level + 1}',
+              style: const TextStyle(fontSize: 11, color: AppColors.mutedText),
+            ),
+            Text(
+              '${(progress.progressFraction * 100).round()}%',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress.progressFraction),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) => LinearProgressIndicator(
+              value: value,
+              minHeight: 8,
+              backgroundColor: const Color(0xFFE6F3EE),
+              color: AppColors.primaryDark,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAchievementsButton() {
+    final g = _gamification;
+    final unlocked = g?.unlockedCount ?? 0;
+    final total = GamificationService.catalogue.length;
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AchievementsScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE1E6E2)),
+        ),
+        child: Row(
+          children: [
+            const Text('🏆', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Достижения',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                  Text(
+                    '$unlocked / $total разблокировано',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.mutedText,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatBox(
+    String label,
+    String value,
+    IconData icon,
+    Color iconColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -289,7 +450,11 @@ class _ProfileTabState extends State<ProfileTab> {
           ),
           Text(
             label.toUpperCase(),
-            style: const TextStyle(fontSize: 10, color: AppColors.mutedText, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.mutedText,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -369,11 +534,17 @@ class _ProfileTabState extends State<ProfileTab> {
                     children: [
                       Text(
                         '$percent%',
-                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const Text(
                         'Прогресс',
-                        style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.mutedText,
+                        ),
                       ),
                     ],
                   ),
@@ -384,7 +555,11 @@ class _ProfileTabState extends State<ProfileTab> {
           const SizedBox(height: 32),
           _buildGoalRow(AppColors.primaryDark, 'Пройдено', passed.toString()),
           const SizedBox(height: 12),
-          _buildGoalRow(const Color(0xFFE1E6E2), 'Осталось', remaining.toString()),
+          _buildGoalRow(
+            const Color(0xFFE1E6E2),
+            'Осталось',
+            remaining.toString(),
+          ),
         ],
       ),
     );
@@ -398,9 +573,17 @@ class _ProfileTabState extends State<ProfileTab> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
-          border: isSelected ? Border.all(color: const Color(0xFFE1E6E2)) : null,
+          border: isSelected
+              ? Border.all(color: const Color(0xFFE1E6E2))
+              : null,
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 2, offset: const Offset(0, 1))]
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(13),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
               : null,
         ),
         child: Text(

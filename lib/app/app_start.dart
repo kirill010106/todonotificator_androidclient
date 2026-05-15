@@ -5,6 +5,7 @@ import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/target_select_screen.dart';
 import '../ui/theme/app_colors.dart';
+import 'timer_controller.dart';
 
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
@@ -29,6 +30,7 @@ class _AppStartState extends State<AppStart> with WidgetsBindingObserver {
 
   bool _didLoad = false;
   Future<_StartDestination>? _future;
+  DateTime? _pausedAt;
 
   @override
   void didChangeDependencies() {
@@ -82,9 +84,33 @@ class _AppStartState extends State<AppStart> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final services = AppScope.of(context);
     if (state == AppLifecycleState.paused) {
+      _pausedAt = DateTime.now();
       services.timer.setOngoingNotificationsEnabled(true);
     } else if (state == AppLifecycleState.resumed) {
+      _checkStrictMode(services);
       services.timer.setOngoingNotificationsEnabled(false);
+      _pausedAt = null;
+    }
+  }
+
+  Future<void> _checkStrictMode(AppServices services) async {
+    final pausedAt = _pausedAt;
+    if (pausedAt == null) return;
+
+    final timer = services.timer;
+    // Strict Mode only applies during Focus phase when a task is selected
+    if (timer.phase != TimerPhase.focus ||
+        timer.mode != TimerMode.note ||
+        !timer.isRunning) {
+      return;
+    }
+
+    final isStrict = await services.settings.isStrictModeEnabled();
+    if (!isStrict) return;
+
+    final diff = DateTime.now().difference(pausedAt);
+    if (diff.inSeconds > 10) {
+      timer.strictModeViolation();
     }
   }
 

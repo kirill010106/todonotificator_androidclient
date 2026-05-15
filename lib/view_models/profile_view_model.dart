@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app/timer_controller.dart';
 import '../data/models.dart';
 import '../data/repositories.dart';
+import '../services/gamification_service.dart';
 
 class ProfileViewModel extends ChangeNotifier {
   ProfileViewModel({
@@ -9,23 +10,26 @@ class ProfileViewModel extends ChangeNotifier {
     required SettingsRepository settingsRepository,
     required TaskRepository taskRepository,
     required TimerController timerController,
+    required GamificationService gamificationService,
   })  : _authRepository = authRepository,
         _settingsRepository = settingsRepository,
         _taskRepository = taskRepository,
-        _timerController = timerController {
+        _timerController = timerController,
+        _gamificationService = gamificationService {
     _timerController.addListener(notifyListeners);
+    _gamificationService.addListener(_onGamificationUpdate);
   }
 
   final AuthRepository _authRepository;
   final SettingsRepository _settingsRepository;
   final TaskRepository _taskRepository;
   final TimerController _timerController;
+  final GamificationService _gamificationService;
 
   User? _user;
   TargetOption? _target;
   int _doneTasks = 0;
   int _burnedTasks = 0;
-  int _streak = 0;
   bool _isLoading = true;
   bool _showIntervals = true;
 
@@ -33,10 +37,19 @@ class ProfileViewModel extends ChangeNotifier {
   TargetOption? get target => _target;
   int get doneTasks => _doneTasks;
   int get burnedTasks => _burnedTasks;
-  int get streak => _streak;
+  // streak is now sourced from GamificationService
+  int get streak => _gamificationService.progress.streakDays;
   bool get isLoading => _isLoading;
   bool get showIntervals => _showIntervals;
   int get completedPomodoros => _timerController.completedPomodoros;
+  UserProgress get progress => _gamificationService.progress;
+  List<Achievement> get recentAchievements =>
+      _gamificationService.achievements
+          .where((a) => a.isUnlocked)
+          .toList()
+          .reversed
+          .take(3)
+          .toList();
 
   static const List<TargetOption> _options = [
     TargetOption(
@@ -82,7 +95,6 @@ class ProfileViewModel extends ChangeNotifier {
       final tasks = await _taskRepository.fetchTasks();
       _doneTasks = tasks.where((t) => t.isDone).length;
       _burnedTasks = tasks.where((t) => !t.isDone && t.isBurned).length;
-      _streak = 0; // Still hardcoded as in original screen
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -102,6 +114,11 @@ class ProfileViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _timerController.removeListener(notifyListeners);
+    _gamificationService.removeListener(_onGamificationUpdate);
     super.dispose();
+  }
+
+  void _onGamificationUpdate() {
+    notifyListeners();
   }
 }

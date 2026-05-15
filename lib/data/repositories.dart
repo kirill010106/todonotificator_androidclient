@@ -77,4 +77,26 @@ abstract class SettingsRepository {
 
   Future<void> setQuietDays(List<bool> days);
   Future<List<bool>> getQuietDays();
+
+  Future<void> setStrictModeEnabled(bool enabled);
+  Future<bool> isStrictModeEnabled();
+}
+
+abstract class GamificationRepository {
+  /// Returns current progress for [userId], creating a zero-state if none.
+  Future<UserProgress> getProgress(int userId);
+
+  /// Adds [xpDelta] to [userId]'s total XP (can be negative).
+  Future<UserProgress> addXp(int userId, int xpDelta);
+
+  /// Updates the streak: increments if last activity was yesterday,
+  /// resets to 1 if it was earlier. No-op if already updated today.
+  /// Returns the new streak length.
+  Future<int> updateStreak(int userId);
+
+  /// Returns all achievement IDs already unlocked by [userId].
+  Future<Set<String>> getUnlockedAchievementIds(int userId);
+
+  /// Persists a newly unlocked achievement.
+  Future<void> unlockAchievement(int userId, String achievementId);
 }

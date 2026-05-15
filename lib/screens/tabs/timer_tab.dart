@@ -97,6 +97,8 @@ class _TimerTabState extends State<TimerTab> {
         await _showCompletionDialog();
       } else if (consumed == TimerDialog.penalty) {
         await _showPenaltyDialog();
+      } else if (consumed == TimerDialog.strictModeViolation) {
+        await _showStrictModeViolationDialog();
       }
       _dialogOpen = false;
       
@@ -104,6 +106,67 @@ class _TimerTabState extends State<TimerTab> {
         _maybeShowDialog();
       }
     });
+  }
+
+  Future<void> _showStrictModeViolationDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8E8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.timer_off_outlined, color: Color(0xFFD32F2F), size: 28),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Сессия прервана!',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Вы нарушили "Строгий режим", свернув приложение более чем на 10 секунд. Текущая сессия аннулирована.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                        height: 1.4,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F5B42),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Понятно', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showCompletionDialog() async {

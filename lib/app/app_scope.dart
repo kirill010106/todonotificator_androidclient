@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/repositories.dart';
+import '../services/gamification_service.dart';
 import '../services/notification_service.dart';
 import 'navigation_state.dart';
 import 'timer_controller.dart';
@@ -13,6 +14,8 @@ class AppServices {
     required this.timer,
     required this.navigation,
     required this.notifications,
+    required this.gamification,
+    required this.gamificationRepository,
   });
 
   final AuthRepository auth;
@@ -21,6 +24,8 @@ class AppServices {
   final TimerController timer;
   final AppNavigationState navigation;
   final NotificationService notifications;
+  final GamificationService gamification;
+  final GamificationRepository gamificationRepository;
 }
 
 class AppScope extends InheritedWidget {

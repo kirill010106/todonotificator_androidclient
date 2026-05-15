@@ -13,10 +13,12 @@ class SettingsViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
 
   bool _darkTheme = false;
+  bool _strictMode = false;
   String _targetTitle = 'В ТОНУСЕ';
   bool _isLoading = true;
 
   bool get darkTheme => _darkTheme;
+  bool get strictMode => _strictMode;
   String get targetTitle => _targetTitle;
   bool get isLoading => _isLoading;
 
@@ -57,12 +59,20 @@ class SettingsViewModel extends ChangeNotifier {
       _targetTitle = t.title;
     }
 
+    _strictMode = await _settingsRepository.isStrictModeEnabled();
+
     _isLoading = false;
     notifyListeners();
   }
 
   void setDarkTheme(bool value) {
     _darkTheme = value;
+    notifyListeners();
+  }
+
+  Future<void> setStrictMode(bool value) async {
+    _strictMode = value;
+    await _settingsRepository.setStrictModeEnabled(value);
     notifyListeners();
   }
 

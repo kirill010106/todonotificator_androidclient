@@ -1232,28 +1232,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 final categoryButton = OutlinedButton.icon(
                   onPressed: _openCategorySheet,
                   icon: Icon(
-                    Icons.bookmark_border,
+                    category == null ? Icons.bookmark_border : Icons.bookmark,
                     size: 18,
                     color: category == null
                         ? AppColors.mutedText
-                        : AppColors.primaryDark,
+                        : Color(category.color),
                   ),
                   label: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (category != null)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: Color(category.color),
-                            shape: BoxShape.circle,
-                          ),
+                      Flexible(
+                        child: Text(
+                          category?.name ?? 'Категория',
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      Text(
-                        category?.name ?? 'Категория',
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -1305,11 +1297,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                       Row(
                         children: [
                           Expanded(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [categoryButton, reminderButton],
+                            child: Row(
+                              children: [
+                                Flexible(child: categoryButton),
+                                const SizedBox(width: 8),
+                                Flexible(child: reminderButton),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1340,11 +1333,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 return Row(
                   children: [
                     Expanded(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [categoryButton, reminderButton],
+                      child: Row(
+                        children: [
+                          Flexible(child: categoryButton),
+                          const SizedBox(width: 8),
+                          Flexible(child: reminderButton),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),

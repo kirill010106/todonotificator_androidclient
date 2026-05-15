@@ -2,15 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../data/repositories.dart';
+import '../services/gamification_service.dart';
 import '../services/notification_service.dart';
 
 class TimerController extends ChangeNotifier {
   TimerController({
     required TaskRepository tasks,
+    required GamificationService gamification,
     NotificationService? notifications,
+    int? userId,
   }) : _tasks = tasks,
-       _notifications = notifications {
+       _gamification = gamification,
+       _notifications = notifications,
+       _userId = userId {
     _remaining = focusDuration;
   }
 
@@ -21,7 +27,9 @@ class TimerController extends ChangeNotifier {
   static const int totalCycles = 4;
 
   final TaskRepository _tasks;
+  final GamificationService _gamification;
   final NotificationService? _notifications;
+  final int? _userId;
   Timer? _timer;
   bool _ongoingNotificationsEnabled = false;
 
@@ -34,6 +42,7 @@ class TimerController extends ChangeNotifier {
   int _cycle = 1;
   int _completedPomodoros = 0;
   int _interruptedPomodoros = 0;
+  bool _isMiniPlayerDismissed = false;
   int? _taskId;
   TimerDialog? _pendingDialog;
 
@@ -55,6 +64,7 @@ class TimerController extends ChangeNotifier {
 
   int? get taskId => _taskId;
   TimerDialog? get pendingDialog => _pendingDialog;
+  bool get isMiniPlayerDismissed => _isMiniPlayerDismissed;
 
   Duration get focusDuration => _scaleDuration(_baseFocusDuration);
   Duration get breakDuration => _scaleDuration(_baseBreakDuration);
@@ -132,6 +142,14 @@ class TimerController extends ChangeNotifier {
     _pendingDialog = null;
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskDone(_taskId!, true);
+      // Count all done tasks for achievement check
+      final allTasks = await _tasks.fetchTasks();
+      final doneTasks = allTasks.where((t) => t.isDone).length;
+      await _gamification.recordEvent(
+        XpEvent.taskComplete,
+        userId: _userId,
+        totalDoneTasks: doneTasks,
+      );
     }
     _mode = TimerMode.free;
     _taskId = null;
@@ -146,7 +164,8 @@ class TimerController extends ChangeNotifier {
 
   void returnToWork() {
     _pendingDialog = null;
-    _advanceAfterFocus();
+    // Возобновляем таймер с места паузы, не переходим к перерыву
+    resume();
   }
 
   void penaltyReturnToWork() {
@@ -158,9 +177,31 @@ class TimerController extends ChangeNotifier {
     _pendingDialog = null;
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskBurned(_taskId!, true);
+      await _gamification.recordEvent(
+        XpEvent.taskBurned,
+        userId: _userId,
+      );
     }
     stop();
     _notifications?.cancelNotification(2000);
+  }
+
+  Future<void> strictModeViolation() async {
+    if (_mode == TimerMode.note && _taskId != null) {
+      await _tasks.setTaskBurned(_taskId!, true);
+      await _gamification.recordEvent(
+        XpEvent.taskBurned,
+        userId: _userId,
+      );
+    }
+    _timer?.cancel();
+    _phase = TimerPhase.idle;
+    _remaining = focusDuration;
+    _isRunning = false;
+    _isPenalty = false;
+    _notifications?.cancelNotification(2000);
+    _pendingDialog = TimerDialog.strictModeViolation;
+    notifyListeners();
   }
 
   void requestStop() {
@@ -173,6 +214,11 @@ class TimerController extends ChangeNotifier {
     } else {
       stop();
     }
+  }
+
+  void dismissMiniPlayer() {
+    _isMiniPlayerDismissed = true;
+    notifyListeners();
   }
 
   TimerDialog? consumeDialog() {
@@ -189,6 +235,7 @@ class TimerController extends ChangeNotifier {
     _isPenalty = false;
     _pendingDialog = null;
     _cycle = 1;
+    _isMiniPlayerDismissed = false;
     notifyListeners();
   }
 
@@ -247,14 +294,19 @@ class TimerController extends ChangeNotifier {
         .padLeft(2, '0');
     final title = 'Таймер запущен';
     final body = 'Осталось $minutes:$seconds';
-    _notifications!.showOngoingNotification(id: 2000, title: title, body: body);
+    _notifications.showOngoingNotification(id: 2000, title: title, body: body);
   }
 
-  void _onPhaseComplete() {
+  Future<void> _onPhaseComplete() async {
     _isRunning = false;
 
     if (_phase == TimerPhase.focus) {
       _completedPomodoros += 1;
+      await _gamification.recordEvent(
+        XpEvent.pomodoroComplete,
+        userId: _userId,
+        totalPomodoros: _completedPomodoros,
+      );
       // When a focus period completes, advance to break/rest automatically.
       // Only show dialogs when the user explicitly requested stop.
       _advanceAfterFocus();
@@ -294,4 +346,4 @@ enum TimerMode { free, note }
 
 enum TimerPhase { idle, focus, breakTime, rest }
 
-enum TimerDialog { checkCompletion, penalty }
+enum TimerDialog { checkCompletion, penalty, strictModeViolation }

@@ -113,6 +113,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                         },
                       ),
+                      const Divider(height: 1, indent: 48),
+                      _buildListTile(
+                        icon: Icons.timer_outlined,
+                        title: 'Строгий режим',
+                        subtitle: 'Штраф за сворачивание приложения',
+                        trailing: Switch(
+                          value: vm.strictMode,
+                          onChanged: (val) => vm.setStrictMode(val),
+                          activeColor: AppColors.primary,
+                        ),
+                      ),
                     ]),
                     const SizedBox(height: 24),
                     _buildSectionHeader('СТАТУС'),

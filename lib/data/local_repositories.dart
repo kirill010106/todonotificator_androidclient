@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../services/gamification_service.dart';
 import 'local_database.dart';
 import 'models.dart';
 import 'repositories.dart';
@@ -105,6 +106,17 @@ class LocalSettingsRepository implements SettingsRepository {
     final val = await _getValue('quiet_days');
     if (val == null) return List.generate(7, (_) => false);
     return val.split(',').map((e) => e == '1').toList();
+  }
+
+  @override
+  Future<void> setStrictModeEnabled(bool enabled) async {
+    await _setValue('strict_mode', enabled ? '1' : '0');
+  }
+
+  @override
+  Future<bool> isStrictModeEnabled() async {
+    final val = await _getValue('strict_mode');
+    return val == '1';
   }
 }
 
@@ -248,6 +260,7 @@ class LocalTaskRepository implements TaskRepository {
 
   final LocalDatabase _db;
   final LocalSettingsRepository _settings;
+  GamificationService? gamification;
 
   static const List<_DefaultCategory> _defaultCategories = [
     _DefaultCategory('Работа', 0xFF176A57),
@@ -306,7 +319,7 @@ class LocalTaskRepository implements TaskRepository {
       'is_burned': 0,
       'created_at': now.millisecondsSinceEpoch,
     });
-    return Task(
+    final task = Task(
       id: id,
       title: title,
       isDone: false,
@@ -314,6 +327,12 @@ class LocalTaskRepository implements TaskRepository {
       createdAt: now,
       note: '',
     );
+    
+    if (userId != null) {
+      gamification?.recordEvent(XpEvent.taskAdded, userId: userId);
+    }
+    
+    return task;
   }
 
   @override
@@ -365,6 +384,19 @@ class LocalTaskRepository implements TaskRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    if (isDone) {
+      final userId = await _settings.getCurrentUserId();
+      if (userId != null) {
+        final allTasks = await fetchTasks();
+        final doneCount = allTasks.where((t) => t.isDone).length;
+        gamification?.recordEvent(
+          XpEvent.taskComplete,
+          userId: userId,
+          totalDoneTasks: doneCount,
+        );
+      }
+    }
   }
 
   @override
@@ -379,6 +411,13 @@ class LocalTaskRepository implements TaskRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    if (isBurned) {
+      final userId = await _settings.getCurrentUserId();
+      if (userId != null) {
+        gamification?.recordEvent(XpEvent.taskBurned, userId: userId);
+      }
+    }
   }
 
   @override
@@ -461,6 +500,13 @@ class LocalTaskRepository implements TaskRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    if (isDone) {
+      final userId = await _settings.getCurrentUserId();
+      if (userId != null) {
+        gamification?.recordEvent(XpEvent.taskItemDone, userId: userId);
+      }
+    }
   }
 
   @override
@@ -555,4 +601,116 @@ class _DefaultCategory {
 
   final String name;
   final int color;
+}
+
+class LocalGamificationRepository implements GamificationRepository {
+  LocalGamificationRepository(this._db);
+
+  final LocalDatabase _db;
+
+  @override
+  Future<UserProgress> getProgress(int userId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'user_xp',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return UserProgress.fromTotalXp(0);
+    }
+    final row = rows.first;
+    return UserProgress.fromTotalXp(
+      (row['total_xp'] as int?) ?? 0,
+      streakDays: (row['streak_days'] as int?) ?? 0,
+    );
+  }
+
+  @override
+  Future<UserProgress> addXp(int userId, int xpDelta) async {
+    final db = await _db.database;
+    // Upsert row if missing
+    await db.execute(
+      'INSERT OR IGNORE INTO user_xp (user_id, total_xp, streak_days) VALUES (?, 0, 0)',
+      [userId],
+    );
+    await db.rawUpdate(
+      'UPDATE user_xp SET total_xp = MAX(0, total_xp + ?) WHERE user_id = ?',
+      [xpDelta, userId],
+    );
+    return getProgress(userId);
+  }
+
+  @override
+  Future<int> updateStreak(int userId) async {
+    final db = await _db.database;
+    await db.execute(
+      'INSERT OR IGNORE INTO user_xp (user_id, total_xp, streak_days) VALUES (?, 0, 0)',
+      [userId],
+    );
+
+    final rows = await db.query(
+      'user_xp',
+      columns: ['streak_days', 'last_active_date'],
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+
+    final today = _dateString(DateTime.now());
+    final lastDate = rows.isEmpty ? null : rows.first['last_active_date'] as String?;
+    final currentStreak = rows.isEmpty ? 0 : (rows.first['streak_days'] as int? ?? 0);
+
+    if (lastDate == today) {
+      // Already updated today — no change
+      return currentStreak;
+    }
+
+    int newStreak;
+    if (lastDate == _dateString(DateTime.now().subtract(const Duration(days: 1)))) {
+      // Consecutive day
+      newStreak = currentStreak + 1;
+    } else {
+      // Gap — reset
+      newStreak = 1;
+    }
+
+    await db.update(
+      'user_xp',
+      {'streak_days': newStreak, 'last_active_date': today},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return newStreak;
+  }
+
+  @override
+  Future<Set<String>> getUnlockedAchievementIds(int userId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'achievements',
+      columns: ['id'],
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return rows.map((r) => r['id'] as String).toSet();
+  }
+
+  @override
+  Future<void> unlockAchievement(int userId, String achievementId) async {
+    final db = await _db.database;
+    await db.insert(
+      'achievements',
+      {
+        'id': achievementId,
+        'user_id': userId,
+        'unlocked_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  String _dateString(DateTime dt) =>
+      '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 }
