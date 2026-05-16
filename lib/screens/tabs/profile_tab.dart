@@ -8,6 +8,7 @@ import '../../data/models.dart';
 import '../../services/gamification_service.dart';
 import '../../ui/theme/app_colors.dart';
 import '../login_screen.dart';
+import '../graveyard_screen.dart';
 import '../settings_screen.dart';
 import 'achievements_screen.dart';
 
@@ -317,11 +318,19 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _buildStatBox(
-                    'сгорело',
-                    _burnedTasks.toString(),
-                    Icons.cancel_outlined,
-                    AppColors.error,
+                  child: GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const GraveyardScreen()),
+                      );
+                      _loadData(); // Refresh counts when returning
+                    },
+                    child: _buildStatBox(
+                      'сгорело',
+                      _burnedTasks.toString(),
+                      Icons.cancel_outlined,
+                      AppColors.error,
+                    ),
                   ),
                 ),
               ],

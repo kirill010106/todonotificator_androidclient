@@ -21,6 +21,7 @@ class Task {
   final String title;
   final bool isDone;
   final bool isBurned;
+  final bool isHardcore;
   final DateTime createdAt;
   final String? note;
   final int? categoryId;
@@ -32,6 +33,7 @@ class Task {
     required this.title,
     required this.isDone,
     required this.isBurned,
+    required this.isHardcore,
     required this.createdAt,
     this.note,
     this.categoryId,
@@ -47,6 +49,7 @@ class Task {
       title: map['title'] as String,
       isDone: (map['is_done'] as int) == 1,
       isBurned: ((map['is_burned'] as int?) ?? 0) == 1,
+      isHardcore: ((map['is_hardcore'] as int?) ?? 0) == 1,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
       note: map['note'] as String?,
       categoryId: map['category_id'] as int?,
@@ -59,6 +62,7 @@ class Task {
     String? title,
     bool? isDone,
     bool? isBurned,
+    bool? isHardcore,
     DateTime? createdAt,
     String? note,
     int? categoryId,
@@ -72,6 +76,7 @@ class Task {
       title: title ?? this.title,
       isDone: isDone ?? this.isDone,
       isBurned: isBurned ?? this.isBurned,
+      isHardcore: isHardcore ?? this.isHardcore,
       createdAt: createdAt ?? this.createdAt,
       note: note ?? this.note,
       categoryId: setCategory ? categoryId : this.categoryId,
@@ -161,7 +166,7 @@ ReminderType? reminderTypeFromString(String? value) {
   return null;
 }
 
-enum TaskFilter { all, active, completed }
+enum TaskFilter { all, active, completed, burned }
 
 class TargetOption {
   final String id;

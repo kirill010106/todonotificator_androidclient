@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
 import '../../data/models.dart';
+import '../../data/repositories.dart';
+import '../../services/audio_service.dart';
 import '../../ui/theme/app_colors.dart';
 import '../task_detail_screen.dart';
 
@@ -23,6 +25,8 @@ class TasksTabState extends State<TasksTab> {
   bool _hasError = false;
   String? _errorMessage;
 
+  late TaskRepository _repo;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +35,7 @@ class TasksTabState extends State<TasksTab> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _repo = AppScope.of(context).tasks;
     if (!_didLoad) {
       _didLoad = true;
       _loadTasks();
@@ -44,6 +49,7 @@ class TasksTabState extends State<TasksTab> {
   }
 
   Future<void> _loadTasks() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -51,12 +57,14 @@ class TasksTabState extends State<TasksTab> {
     });
 
     try {
-      final repo = AppScope.of(context).tasks;
-      final tasksResult = await repo.fetchTasks(
-        filter: _filter,
-        query: _searchController.text,
+      final query = _searchController.text;
+      final filter = _filter;
+      
+      final tasksResult = await _repo.fetchTasks(
+        filter: filter,
+        query: query,
       );
-      final categoriesResult = await repo.fetchCategories();
+      final categoriesResult = await _repo.fetchCategories();
 
       if (!mounted) {
         return;
@@ -117,7 +125,8 @@ class TasksTabState extends State<TasksTab> {
               ),
             ),
           ),
-          Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
@@ -126,6 +135,8 @@ class TasksTabState extends State<TasksTab> {
                 _buildFilterChip('Не сделано', TaskFilter.active),
                 const SizedBox(width: 8),
                 _buildFilterChip('Сделано', TaskFilter.completed),
+                const SizedBox(width: 8),
+                _buildFilterChip('Сгорело', TaskFilter.burned),
               ],
             ),
           ),
@@ -137,33 +148,51 @@ class TasksTabState extends State<TasksTab> {
                 ? _buildErrorState(theme)
                 : _tasks.isEmpty
                 ? _buildEmptyState(theme)
-                : ListView.separated(
+                : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemBuilder: (context, index) {
                       final task = _tasks[index];
                       final category = task.categoryId != null
                           ? _categories[task.categoryId!]
                           : null;
-                      return _TaskTile(
-                        task: task,
-                        category: category,
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => TaskDetailScreen(taskId: task.id),
-                            ),
-                          );
-                          await _loadTasks();
-                        },
-                        onChanged: (value) async {
-                          await AppScope.of(
-                            context,
-                          ).tasks.setTaskDone(task.id, value);
-                          await _loadTasks();
-                        },
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _TaskTile(
+                          task: task,
+                          category: category,
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TaskDetailScreen(taskId: task.id),
+                              ),
+                            );
+                            await _loadTasks();
+                          },
+                          onChanged: (value) async {
+                            final audio = AppScope.of(context).audio;
+                            await _repo.setTaskDone(task.id, value);
+                            if (value) {
+                              audio.playEffect(AudioEffect.taskComplete);
+                            }
+                            await _loadTasks();
+                          },
+                          onResurrect: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await _repo.resurrectTask(task.id);
+                            if (!mounted) return;
+                            await _loadTasks();
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Задача "${task.title}" воскрешена как Hardcore!'),
+                                  backgroundColor: const Color(0xFFFF5722),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                       );
                     },
-                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemCount: _tasks.length,
                   ),
           ),
@@ -174,6 +203,19 @@ class TasksTabState extends State<TasksTab> {
 
   Widget _buildFilterChip(String label, TaskFilter filter) {
     final isSelected = _filter == filter;
+    final isBurnedFilter = filter == TaskFilter.burned;
+
+    Color selectedColor = AppColors.primary;
+    Color borderColor = const Color(0xFFCDD5CF);
+    
+    if (isBurnedFilter) {
+      if (isSelected) {
+        selectedColor = AppColors.error;
+      }
+      borderColor = isSelected ? AppColors.error : AppColors.error.withAlpha(100);
+    } else if (isSelected) {
+      borderColor = AppColors.primary;
+    }
 
     return ChoiceChip(
       label: Text(label),
@@ -185,14 +227,14 @@ class TasksTabState extends State<TasksTab> {
         });
         _loadTasks();
       },
-      selectedColor: AppColors.primary,
+      selectedColor: selectedColor,
       backgroundColor: Colors.white,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.mutedText,
+        color: isSelected ? Colors.white : (isBurnedFilter ? AppColors.error : AppColors.mutedText),
         fontWeight: FontWeight.w600,
       ),
       side: BorderSide(
-        color: isSelected ? AppColors.primary : const Color(0xFFCDD5CF),
+        color: borderColor,
       ),
     );
   }
@@ -269,12 +311,14 @@ class _TaskTile extends StatelessWidget {
     this.category,
     required this.onChanged,
     required this.onTap,
+    this.onResurrect,
   });
 
   final Task task;
   final Category? category;
   final ValueChanged<bool> onChanged;
   final VoidCallback onTap;
+  final VoidCallback? onResurrect;
 
   @override
   Widget build(BuildContext context) {
@@ -282,17 +326,34 @@ class _TaskTile extends StatelessWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 0),
       onTap: onTap,
-      title: Text(
-        task.title,
-        style: TextStyle(
-          fontSize: 14,
-          color: task.isDone
-              ? AppColors.mutedText
-              : isBurned
-              ? AppColors.error
-              : Colors.black87,
-          decoration: task.isDone ? TextDecoration.lineThrough : null,
-        ),
+      title: Row(
+        children: [
+          if (task.isHardcore) ...[
+            const Icon(
+              Icons.local_fire_department,
+              size: 16,
+              color: Color(0xFFFF5722),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Expanded(
+            child: Text(
+              task.title,
+              style: TextStyle(
+                fontSize: 14,
+                color: task.isDone
+                    ? AppColors.mutedText
+                    : isBurned
+                    ? AppColors.error
+                    : task.isHardcore
+                    ? const Color(0xFFFF5722)
+                    : Colors.black87,
+                decoration: task.isDone ? TextDecoration.lineThrough : null,
+                fontWeight: task.isHardcore ? FontWeight.w700 : null,
+              ),
+            ),
+          ),
+        ],
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,6 +373,17 @@ class _TaskTile extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: AppColors.error),
                 ),
               ],
+            ),
+          ],
+          if (task.isHardcore && !task.isDone) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'Hardcore: x1.5 XP',
+              style: TextStyle(
+                fontSize: 10,
+                color: Color(0xFFFF5722),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
           if (category != null) ...[
@@ -334,20 +406,30 @@ class _TaskTile extends StatelessWidget {
           ],
         ],
       ),
-      trailing: Checkbox(
-        value: task.isDone,
-        onChanged: (value) {
-          if (value == null) {
-            return;
-          }
-          onChanged(value);
-        },
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        activeColor: AppColors.primary,
-        side: BorderSide(
-          color: isBurned ? AppColors.error : const Color(0xFFCDD5CF),
-        ),
-      ),
+      trailing: isBurned && onResurrect != null
+          ? IconButton(
+              onPressed: onResurrect,
+              icon: const Icon(Icons.auto_fix_high, color: Color(0xFFFF5722)),
+              tooltip: 'Воскресить',
+            )
+          : Checkbox(
+              value: task.isDone,
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+                onChanged(value);
+              },
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              activeColor: task.isHardcore ? const Color(0xFFFF5722) : AppColors.primary,
+              side: BorderSide(
+                color: isBurned
+                    ? AppColors.error
+                    : task.isHardcore
+                    ? const Color(0xFFFF5722)
+                    : const Color(0xFFCDD5CF),
+              ),
+            ),
     );
   }
 }

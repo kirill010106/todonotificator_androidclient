@@ -5,6 +5,7 @@ import '../app/navigation_state.dart';
 import '../app/timer_controller.dart';
 import '../services/gamification_service.dart';
 import '../ui/theme/app_colors.dart';
+import '../ui/widgets/game_banner.dart';
 import '../ui/widgets/xp_toast.dart';
 import 'tabs/achievements_screen.dart';
 import 'tabs/profile_tab.dart';
@@ -54,23 +55,37 @@ class _HomeScreenState extends State<HomeScreen> {
     final g = _gamification;
     if (g == null) return;
 
-    // Show floating XP toasts
-    final deltas = g.consumeXpDeltas();
-    for (final delta in deltas) {
-      // Small delay between multiple toasts could be added,
-      // but showing them together is also fine.
-      XpToast.show(context, delta: delta);
-    }
+    // We use post frame callback to ensure we are not calling show() during a build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-    // Show achievement unlock popup
-    final pendingUnlock = g.consumePendingUnlock();
-    if (pendingUnlock != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showAchievementUnlockPopup(context, pendingUnlock);
-        }
-      });
-    }
+      // 1. Show floating XP toasts
+      final deltas = g.consumeXpDeltas();
+      for (int i = 0; i < deltas.length; i++) {
+        // Stagger toasts slightly if there are multiple
+        Future.delayed(Duration(milliseconds: i * 200), () {
+          if (mounted) {
+            XpToast.show(context, delta: deltas[i]);
+          }
+        });
+      }
+
+      // 2. Show achievement unlock popup
+      final pendingUnlock = g.consumePendingUnlock();
+      if (pendingUnlock != null) {
+        showAchievementUnlockPopup(context, pendingUnlock);
+      }
+
+      // 3. Show game banner
+      final pendingBanner = g.consumePendingBanner();
+      if (pendingBanner != null) {
+        GameBanner.show(
+          context,
+          type: pendingBanner.$1,
+          message: pendingBanner.$2,
+        );
+      }
+    });
   }
 
   void _handleNavigation() {

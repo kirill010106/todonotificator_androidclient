@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repositories.dart';
 import '../services/gamification_service.dart';
 import '../services/notification_service.dart';
+import '../services/audio_service.dart';
 import 'navigation_state.dart';
 import 'timer_controller.dart';
 
@@ -16,6 +17,7 @@ class AppServices {
     required this.notifications,
     required this.gamification,
     required this.gamificationRepository,
+    required this.audio,
   });
 
   final AuthRepository auth;
@@ -26,6 +28,7 @@ class AppServices {
   final NotificationService notifications;
   final GamificationService gamification;
   final GamificationRepository gamificationRepository;
+  final AudioService audio;
 }
 
 class AppScope extends InheritedWidget {

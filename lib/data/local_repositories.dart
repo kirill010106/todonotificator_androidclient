@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../services/gamification_service.dart';
+import '../ui/widgets/game_banner.dart';
 import 'local_database.dart';
 import 'models.dart';
 import 'repositories.dart';
@@ -273,6 +274,7 @@ class LocalTaskRepository implements TaskRepository {
   Future<List<Task>> fetchTasks({
     TaskFilter filter = TaskFilter.all,
     String? query,
+    bool includeBurned = false,
   }) async {
     final db = await _db.database;
     final userId = await _settings.getCurrentUserId();
@@ -283,14 +285,32 @@ class LocalTaskRepository implements TaskRepository {
       where.add('user_id = ?');
       whereArgs.add(userId);
     }
-    if (filter == TaskFilter.active) {
-      where.add('is_done = 0');
-    } else if (filter == TaskFilter.completed) {
-      where.add('is_done = 1');
+    
+    switch (filter) {
+      case TaskFilter.active:
+        where.add('is_done = 0 AND is_burned = 0');
+        break;
+      case TaskFilter.completed:
+        where.add('is_done = 1 AND is_burned = 0');
+        break;
+      case TaskFilter.burned:
+        where.add('is_burned = 1');
+        break;
+      case TaskFilter.all:
+        if (includeBurned) {
+          // No condition on is_burned - return all
+        } else {
+          where.add('is_burned = 0');
+        }
+        break;
     }
+
     final trimmed = query?.trim();
     if (trimmed != null && trimmed.isNotEmpty) {
-      where.add('title LIKE ?');
+      where.add(
+        '(title LIKE ? OR category_id IN (SELECT id FROM categories WHERE name LIKE ?))',
+      );
+      whereArgs.add('%$trimmed%');
       whereArgs.add('%$trimmed%');
     }
 
@@ -317,6 +337,7 @@ class LocalTaskRepository implements TaskRepository {
       'reminder_minutes': null,
       'is_done': 0,
       'is_burned': 0,
+      'is_hardcore': 0,
       'created_at': now.millisecondsSinceEpoch,
     });
     final task = Task(
@@ -324,6 +345,7 @@ class LocalTaskRepository implements TaskRepository {
       title: title,
       isDone: false,
       isBurned: false,
+      isHardcore: false,
       createdAt: now,
       note: '',
     );
@@ -375,6 +397,7 @@ class LocalTaskRepository implements TaskRepository {
   @override
   Future<void> setTaskDone(int id, bool isDone) async {
     final db = await _db.database;
+    // When marking as done, always ensure it's not marked as burned anymore
     await db.update(
       'tasks',
       {
@@ -388,11 +411,28 @@ class LocalTaskRepository implements TaskRepository {
     if (isDone) {
       final userId = await _settings.getCurrentUserId();
       if (userId != null) {
+        // Fetch task to check for hardcore bonus
+        final taskMap = await db.query(
+          'tasks',
+          columns: ['is_hardcore'],
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        double multiplier = 1.0;
+        if (taskMap.isNotEmpty) {
+          final val = taskMap.first['is_hardcore'];
+          // Robust type check for SQLite 0/1
+          if (val == 1 || val == '1' || val == true) {
+            multiplier = 1.5;
+          }
+        }
+
         final allTasks = await fetchTasks();
         final doneCount = allTasks.where((t) => t.isDone).length;
         gamification?.recordEvent(
           XpEvent.taskComplete,
           userId: userId,
+          xpMultiplier: multiplier,
           totalDoneTasks: doneCount,
         );
       }
@@ -402,21 +442,67 @@ class LocalTaskRepository implements TaskRepository {
   @override
   Future<void> setTaskBurned(int id, bool isBurned) async {
     final db = await _db.database;
-    await db.update(
+    
+    // Fetch task to check for current hardcore status
+    final taskMap = await db.query(
       'tasks',
-      {
-        'is_burned': isBurned ? 1 : 0,
-        if (isBurned) 'is_done': 0,
-      },
+      columns: ['is_hardcore'],
       where: 'id = ?',
       whereArgs: [id],
     );
+    
+    if (taskMap.isEmpty) return; // Task already gone
+
+    final val = taskMap.first['is_hardcore'];
+    // Robust type check for SQLite 0/1
+    final isHardcore = val == 1 || val == '1' || val == true;
 
     if (isBurned) {
+      if (isHardcore) {
+        // PERMADEATH: If it's a hardcore task, it gets deleted forever.
+        await deleteTask(id);
+      } else {
+        // Standard burn: Move to graveyard
+        await db.update(
+          'tasks',
+          {
+            'is_burned': 1,
+            'is_done': 0,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+
       final userId = await _settings.getCurrentUserId();
       if (userId != null) {
-        gamification?.recordEvent(XpEvent.taskBurned, userId: userId);
+        // Record penalty event
+        await gamification?.recordEvent(
+          XpEvent.taskBurned,
+          userId: userId,
+          xpMultiplier: isHardcore ? 2.0 : 1.0,
+        );
+
+        if (isHardcore) {
+          gamification?.showBanner(
+            GameBannerType.hardcoreDeath,
+            'Задача уничтожена! Вы провалили Hardcore-задачу. Штраф удвоен.',
+          );
+        } else {
+          gamification?.showBanner(
+            GameBannerType.standardBurn,
+            'Задача сгорела! Она отправлена на кладбище. Воскресите её, чтобы получить бонус.',
+          );
+        }
       }
+    } else {
+      // Manual unburn
+      await db.update(
+        'tasks',
+        {'is_burned': 0},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
     }
   }
 
@@ -450,6 +536,22 @@ class LocalTaskRepository implements TaskRepository {
     final db = await _db.database;
     await db.delete('task_items', where: 'task_id = ?', whereArgs: [id]);
     await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
+  }
+
+  @override
+  Future<void> resurrectTask(int id) async {
+    final db = await _db.database;
+    // Explicitly clear burned status, reset done status, and enable hardcore mode
+    await db.update(
+      'tasks',
+      {
+        'is_burned': 0,
+        'is_hardcore': 1,
+        'is_done': 0,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   @override
@@ -504,7 +606,32 @@ class LocalTaskRepository implements TaskRepository {
     if (isDone) {
       final userId = await _settings.getCurrentUserId();
       if (userId != null) {
-        gamification?.recordEvent(XpEvent.taskItemDone, userId: userId);
+        // Fetch parent task to check for hardcore bonus
+        final itemMap = await db.query(
+          'task_items',
+          columns: ['task_id'],
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        double multiplier = 1.0;
+        if (itemMap.isNotEmpty) {
+          final taskId = itemMap.first['task_id'] as int;
+          final taskMap = await db.query(
+            'tasks',
+            columns: ['is_hardcore'],
+            where: 'id = ?',
+            whereArgs: [taskId],
+          );
+          if (taskMap.isNotEmpty && (taskMap.first['is_hardcore'] as int) == 1) {
+            multiplier = 1.5;
+          }
+        }
+
+        gamification?.recordEvent(
+          XpEvent.taskItemDone,
+          userId: userId,
+          xpMultiplier: multiplier,
+        );
       }
     }
   }

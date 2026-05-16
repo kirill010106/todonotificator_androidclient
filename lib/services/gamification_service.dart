@@ -2,27 +2,54 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repositories.dart';
+import '../ui/widgets/game_banner.dart';
+import 'audio_service.dart';
 
 /// Central service for XP, levels, and achievements.
 /// Exposed as a [ChangeNotifier] so ViewModels can listen to it.
 class GamificationService extends ChangeNotifier {
-  GamificationService(this._repository);
+  GamificationService(this._repository, [this._audio]);
 
   final GamificationRepository _repository;
+  final AudioService? _audio;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
   UserProgress _progress = UserProgress.fromTotalXp(0);
   Set<String> _unlockedIds = {};
-
-  /// Queued achievement to show in an animated popup.
-  /// Consumed by the UI after displaying.
-  Achievement? _pendingUnlock;
-
-  /// Queue of XP deltas (positive or negative) accumulated since the last
-  /// UI frame consumed them. Each entry corresponds to one discrete event
-  /// so the UI can show individual toasts.
   final List<int> _pendingXpDeltas = [];
+  Achievement? _pendingUnlock;
+  GameBannerType? _pendingBannerType;
+  String? _pendingBannerMessage;
+
+  UserProgress get progress => _progress;
+  Set<String> get unlockedIds => _unlockedIds;
+
+  List<int> consumeXpDeltas() {
+    final copy = List<int>.from(_pendingXpDeltas);
+    _pendingXpDeltas.clear();
+    return copy;
+  }
+
+  Achievement? consumePendingUnlock() {
+    final a = _pendingUnlock;
+    _pendingUnlock = null;
+    return a;
+  }
+
+  (GameBannerType, String)? consumePendingBanner() {
+    if (_pendingBannerType == null || _pendingBannerMessage == null) return null;
+    final b = (_pendingBannerType!, _pendingBannerMessage!);
+    _pendingBannerType = null;
+    _pendingBannerMessage = null;
+    return b;
+  }
+
+  void showBanner(GameBannerType type, String message) {
+    _pendingBannerType = type;
+    _pendingBannerMessage = message;
+    notifyListeners();
+  }
 
   // ── Catalogue ──────────────────────────────────────────────────────────────
 
@@ -145,9 +172,6 @@ class GamificationService extends ChangeNotifier {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  UserProgress get progress => _progress;
-  Achievement? get pendingUnlock => _pendingUnlock;
-
   /// Returns the full achievement list merged with unlock status.
   List<Achievement> get achievements => catalogue
       .map(
@@ -173,6 +197,7 @@ class GamificationService extends ChangeNotifier {
   Future<void> recordEvent(
     XpEvent event, {
     required int? userId,
+    double xpMultiplier = 1.0,
     // Extra context needed for some achievements:
     int? totalPomodoros,
     int? totalDoneTasks,
@@ -182,8 +207,9 @@ class GamificationService extends ChangeNotifier {
 
     // 1. Add XP for the event itself
     if (event.xpDelta != 0) {
-      _progress = await _repository.addXp(userId, event.xpDelta);
-      _pendingXpDeltas.add(event.xpDelta);
+      final finalXp = (event.xpDelta * xpMultiplier).round();
+      _progress = await _repository.addXp(userId, finalXp);
+      _pendingXpDeltas.add(finalXp);
     }
 
     // 2. Streak update on any positive event
@@ -210,22 +236,6 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Drains and returns all pending XP deltas for toast display.
-  /// Call from UI (e.g. inside a listener) to consume the queue.
-  List<int> consumeXpDeltas() {
-    if (_pendingXpDeltas.isEmpty) return const [];
-    final copy = List<int>.from(_pendingXpDeltas);
-    _pendingXpDeltas.clear();
-    return copy;
-  }
-
-  /// Call from UI after the popup has been shown.
-  Achievement? consumePendingUnlock() {
-    final a = _pendingUnlock;
-    _pendingUnlock = null;
-    return a;
-  }
-
   // ── Private helpers ────────────────────────────────────────────────────────
 
   Future<void> _unlock(int userId, String id) async {
@@ -235,6 +245,7 @@ class GamificationService extends ChangeNotifier {
 
     await _repository.unlockAchievement(userId, id);
     _unlockedIds.add(id);
+    _audio?.playEffect(AudioEffect.achievementUnlock);
 
     // Award bonus XP for unlocking
     if (def.xpReward > 0) {

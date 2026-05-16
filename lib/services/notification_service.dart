@@ -49,21 +49,6 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    final androidDetails = AndroidNotificationDetails(
-      'pomodoro_ongoing',
-      'Pomodoro Ongoing',
-      importance: Importance.low,
-      priority: Priority.low,
-      ongoing: true,
-      onlyAlertOnce: true,
-      showWhen: false,
-    );
-
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: const DarwinNotificationDetails(),
-    );
-
     // Start or update native foreground service to provide a more reliable ongoing notification.
     try {
       await _foregroundChannel.invokeMethod('startForeground', {

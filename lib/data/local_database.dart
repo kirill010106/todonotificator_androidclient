@@ -22,7 +22,7 @@ class LocalDatabase {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE users ('
@@ -43,6 +43,7 @@ class LocalDatabase {
           'reminder_minutes INTEGER, '
           'is_done INTEGER NOT NULL DEFAULT 0, '
           'is_burned INTEGER NOT NULL DEFAULT 0, '
+          'is_hardcore INTEGER NOT NULL DEFAULT 0, '
           'created_at INTEGER NOT NULL'
           ')',
         );
@@ -134,6 +135,12 @@ class LocalDatabase {
             'unlocked_at INTEGER NOT NULL, '
             'PRIMARY KEY (id, user_id)'
             ')',
+          );
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            'ALTER TABLE tasks ADD COLUMN is_hardcore INTEGER '
+            'NOT NULL DEFAULT 0',
           );
         }
       },

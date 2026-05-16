@@ -41,6 +41,7 @@ class TaskDetailViewModel extends ChangeNotifier {
           title: '',
           isDone: false,
           isBurned: false,
+          isHardcore: false,
           createdAt: DateTime.now(),
           note: '',
         );
@@ -94,6 +95,12 @@ class TaskDetailViewModel extends ChangeNotifier {
       await _repository.updateTaskNote(taskId!, noteStorage);
     });
     notifyListeners();
+  }
+
+  Future<void> resurrectTask() async {
+    if (_task == null) return;
+    await _repository.resurrectTask(_task!.id);
+    await load();
   }
 
   Future<void> toggleTaskDone(bool isDone) async {

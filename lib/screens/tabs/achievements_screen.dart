@@ -114,7 +114,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.9,
+                childAspectRatio: 0.82,
               ),
               itemCount: achievements.length,
               itemBuilder: (context, index) {
@@ -159,7 +159,7 @@ class _AchievementCard extends StatelessWidget {
             : null,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

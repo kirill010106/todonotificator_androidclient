@@ -6,15 +6,18 @@ import '../data/models.dart';
 import '../data/repositories.dart';
 import '../services/gamification_service.dart';
 import '../services/notification_service.dart';
+import '../services/audio_service.dart';
 
 class TimerController extends ChangeNotifier {
   TimerController({
     required TaskRepository tasks,
     required GamificationService gamification,
+    required AudioService audio,
     NotificationService? notifications,
     int? userId,
   }) : _tasks = tasks,
        _gamification = gamification,
+       _audio = audio,
        _notifications = notifications,
        _userId = userId {
     _remaining = focusDuration;
@@ -28,6 +31,7 @@ class TimerController extends ChangeNotifier {
 
   final TaskRepository _tasks;
   final GamificationService _gamification;
+  final AudioService _audio;
   final NotificationService? _notifications;
   final int? _userId;
   Timer? _timer;
@@ -83,6 +87,7 @@ class TimerController extends ChangeNotifier {
     _mode = TimerMode.free;
     _taskId = null;
     _resetSession();
+    _audio.playEffect(AudioEffect.timerStart);
     _startFocus();
   }
 
@@ -90,20 +95,24 @@ class TimerController extends ChangeNotifier {
     _mode = TimerMode.note;
     _taskId = taskId;
     _resetSession();
+    _audio.playEffect(AudioEffect.timerStart);
     _startFocus();
   }
 
   void pause() {
     _timer?.cancel();
     _isRunning = false;
+    _audio.playEffect(AudioEffect.timerPause);
     notifyListeners();
   }
 
   void resume() {
     if (_phase == TimerPhase.idle) {
+      _audio.playEffect(AudioEffect.timerStart);
       _startFocus();
       return;
     }
+    _audio.playEffect(AudioEffect.timerStart);
     _startTicker();
   }
 
@@ -117,6 +126,7 @@ class TimerController extends ChangeNotifier {
     _isRunning = false;
     _isPenalty = false;
     _pendingDialog = null;
+    _audio.playEffect(AudioEffect.timerStop);
     _notifications?.cancelNotification(2000);
     notifyListeners();
   }
@@ -142,14 +152,6 @@ class TimerController extends ChangeNotifier {
     _pendingDialog = null;
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskDone(_taskId!, true);
-      // Count all done tasks for achievement check
-      final allTasks = await _tasks.fetchTasks();
-      final doneTasks = allTasks.where((t) => t.isDone).length;
-      await _gamification.recordEvent(
-        XpEvent.taskComplete,
-        userId: _userId,
-        totalDoneTasks: doneTasks,
-      );
     }
     _mode = TimerMode.free;
     _taskId = null;
@@ -177,10 +179,6 @@ class TimerController extends ChangeNotifier {
     _pendingDialog = null;
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskBurned(_taskId!, true);
-      await _gamification.recordEvent(
-        XpEvent.taskBurned,
-        userId: _userId,
-      );
     }
     stop();
     _notifications?.cancelNotification(2000);
@@ -189,10 +187,6 @@ class TimerController extends ChangeNotifier {
   Future<void> strictModeViolation() async {
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskBurned(_taskId!, true);
-      await _gamification.recordEvent(
-        XpEvent.taskBurned,
-        userId: _userId,
-      );
     }
     _timer?.cancel();
     _phase = TimerPhase.idle;
@@ -274,6 +268,7 @@ class TimerController extends ChangeNotifier {
     if (_remaining.inSeconds <= 1) {
       _timer?.cancel();
       _remaining = Duration.zero;
+      _audio.playEffect(AudioEffect.timerComplete);
       _onPhaseComplete();
       // cancel ongoing notification when phase completes
       _notifications?.cancelNotification(2000);
@@ -302,9 +297,20 @@ class TimerController extends ChangeNotifier {
 
     if (_phase == TimerPhase.focus) {
       _completedPomodoros += 1;
+
+      double multiplier = 1.0;
+      if (_mode == TimerMode.note && _taskId != null) {
+        final tasks = await _tasks.fetchTasks();
+        final task = tasks.where((t) => t.id == _taskId).firstOrNull;
+        if (task?.isHardcore == true) {
+          multiplier = 1.5;
+        }
+      }
+
       await _gamification.recordEvent(
         XpEvent.pomodoroComplete,
         userId: _userId,
+        xpMultiplier: multiplier,
         totalPomodoros: _completedPomodoros,
       );
       // When a focus period completes, advance to break/rest automatically.

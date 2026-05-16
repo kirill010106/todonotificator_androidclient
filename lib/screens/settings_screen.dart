@@ -121,7 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         trailing: Switch(
                           value: vm.strictMode,
                           onChanged: (val) => vm.setStrictMode(val),
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                         ),
                       ),
                     ]),

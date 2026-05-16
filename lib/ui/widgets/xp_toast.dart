@@ -17,10 +17,17 @@ class XpToast {
     final overlay = Overlay.of(context);
 
     late OverlayEntry entry;
+    bool removed = false;
+
     entry = OverlayEntry(
       builder: (_) => _XpToastWidget(
         delta: delta,
-        onDone: () => entry.remove(),
+        onDone: () {
+          if (!removed) {
+            removed = true;
+            entry.remove();
+          }
+        },
       ),
     );
     overlay.insert(entry);

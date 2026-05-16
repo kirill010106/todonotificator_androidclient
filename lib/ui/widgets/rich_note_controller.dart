@@ -10,14 +10,14 @@ class RichNoteController extends TextEditingController {
 
   final List<TextRange> _boldRanges = [];
   final List<TextRange> _italicRanges = [];
-  final List<_LinkRange> _linkRanges = [];
+  final List<LinkRange> _linkRanges = [];
 
   String _previousText = '';
   bool _isAdjusting = false;
 
   List<TextRange> get boldRanges => List.unmodifiable(_boldRanges);
   List<TextRange> get italicRanges => List.unmodifiable(_italicRanges);
-  List<_LinkRange> get linkRanges => List.unmodifiable(_linkRanges);
+  List<LinkRange> get linkRanges => List.unmodifiable(_linkRanges);
 
   void loadFromStorage(String? raw) {
     final parsed = _decodeStorage(raw);
@@ -40,7 +40,7 @@ class RichNoteController extends TextEditingController {
     _isAdjusting = false;
   }
 
-  _LinkRange? _segmentLink(int start, int end) {
+  LinkRange? _segmentLink(int start, int end) {
     for (final range in _linkRanges) {
       if (range.start <= start && range.end >= end) {
         return range;
@@ -153,7 +153,7 @@ class RichNoteController extends TextEditingController {
         selection: TextSelection.collapsed(offset: linkRange.end),
       );
       _linkRanges.add(
-        _LinkRange(start: linkRange.start, end: linkRange.end, url: url),
+        LinkRange(start: linkRange.start, end: linkRange.end, url: url),
       );
       _normalizeLinks();
       _isAdjusting = false;
@@ -163,7 +163,7 @@ class RichNoteController extends TextEditingController {
 
     // mark existing selection as link
     _linkRanges.add(
-      _LinkRange(
+      LinkRange(
         start: selectionRange.start,
         end: selectionRange.end,
         url: url,
@@ -175,7 +175,7 @@ class RichNoteController extends TextEditingController {
 
   void _normalizeLinks() {
     _linkRanges.sort((a, b) => a.start.compareTo(b.start));
-    final merged = <_LinkRange>[];
+    final merged = <LinkRange>[];
     for (final link in _linkRanges) {
       if (merged.isEmpty) {
         merged.add(link);
@@ -184,7 +184,7 @@ class RichNoteController extends TextEditingController {
       final last = merged.last;
       if (link.start <= last.end) {
         // extend last to include link; prefer last.url
-        merged[merged.length - 1] = _LinkRange(
+        merged[merged.length - 1] = LinkRange(
           start: last.start,
           end: link.end > last.end ? link.end : last.end,
           url: last.url,
@@ -286,7 +286,7 @@ class RichNoteController extends TextEditingController {
 
   void _shiftLinkRanges(_TextDiff diff) {
     if (diff.delta == 0 && diff.oldLength == 0) return;
-    final updated = <_LinkRange>[];
+    final updated = <LinkRange>[];
     for (final link in _linkRanges) {
       if (link.end <= diff.start) {
         updated.add(link);
@@ -294,7 +294,7 @@ class RichNoteController extends TextEditingController {
       }
       if (link.start >= diff.endOld) {
         updated.add(
-          _LinkRange(
+          LinkRange(
             start: link.start + diff.delta,
             end: link.end + diff.delta,
             url: link.url,
@@ -308,7 +308,7 @@ class RichNoteController extends TextEditingController {
 
       if (isInsertion && diff.start >= link.start && diff.start <= link.end) {
         updated.add(
-          _LinkRange(
+          LinkRange(
             start: link.start,
             end: link.end + diff.delta,
             url: link.url,
@@ -321,7 +321,7 @@ class RichNoteController extends TextEditingController {
         final newEnd = link.end + diff.delta;
         if (newEnd > link.start) {
           updated.add(
-            _LinkRange(start: link.start, end: newEnd, url: link.url),
+            LinkRange(start: link.start, end: newEnd, url: link.url),
           );
         }
         continue;
@@ -451,15 +451,15 @@ class RichNoteController extends TextEditingController {
         .toList();
   }
 
-  List<_LinkRange> _decodeLinks(Object? raw) {
+  List<LinkRange> _decodeLinks(Object? raw) {
     if (raw is! List) return const [];
-    final out = <_LinkRange>[];
+    final out = <LinkRange>[];
     for (final item in raw) {
       if (item is List && item.length == 3) {
         final s = (item[0] as num).toInt();
         final e = (item[1] as num).toInt();
         final url = item[2]?.toString() ?? '';
-        out.add(_LinkRange(start: s, end: e, url: url));
+        out.add(LinkRange(start: s, end: e, url: url));
       }
     }
     return out;
@@ -481,7 +481,7 @@ class _RichNotePayload {
   final String text;
   final List<TextRange> bold;
   final List<TextRange> italic;
-  final List<_LinkRange> links;
+  final List<LinkRange> links;
 }
 
 class _TextDiff {
@@ -500,8 +500,8 @@ class _TextDiff {
   int get delta => newLength - oldLength;
 }
 
-class _LinkRange {
-  const _LinkRange({required this.start, required this.end, required this.url});
+class LinkRange {
+  const LinkRange({required this.start, required this.end, required this.url});
 
   final int start;
   final int end;

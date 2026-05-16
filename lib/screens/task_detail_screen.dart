@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../app/app_scope.dart';
 import '../data/models.dart';
+import '../services/audio_service.dart';
 import '../ui/theme/app_colors.dart';
 import '../ui/widgets/rich_note_controller.dart';
 
@@ -128,6 +129,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -135,7 +137,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
 
     if (_isNew) {
       try {
-        final categories = await AppScope.of(context).tasks.fetchCategories();
+        final repo = AppScope.of(context).tasks;
+        final categories = await repo.fetchCategories();
         if (!mounted) {
           return;
         }
@@ -144,6 +147,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           title: '',
           isDone: false,
           isBurned: false,
+          isHardcore: false,
           createdAt: DateTime.now(),
           note: '',
           categoryId: null,
@@ -179,6 +183,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       final repo = AppScope.of(context).tasks;
       final task = await repo.getTask(widget.taskId!);
       if (task == null) {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
           _hasError = true;
@@ -234,7 +239,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         return;
       }
 
-      await AppScope.of(context).tasks.updateTaskTitle(task.id, value.trim());
+      final repo = AppScope.of(context).tasks;
+      await repo.updateTaskTitle(task.id, value.trim());
       if (!mounted) {
         return;
       }
@@ -262,7 +268,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         return;
       }
 
-      await AppScope.of(context).tasks.updateTaskNote(task.id, storage);
+      final repo = AppScope.of(context).tasks;
+      await repo.updateTaskNote(task.id, storage);
       if (!mounted) {
         return;
       }
@@ -270,6 +277,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         _task = _copyTask(task, note: storage);
       });
     });
+  }
+
+  Future<void> _resurrectTask() async {
+    final task = _task;
+    if (task == null) return;
+    
+    final repo = AppScope.of(context).tasks;
+    await repo.resurrectTask(task.id);
+    if (!mounted) return;
+    
+    await _load(); // Reload task to update state
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Задача "${task.title}" воскрешена как Hardcore!'),
+          backgroundColor: const Color(0xFFFF5722),
+        ),
+      );
+    }
   }
 
   Future<void> _toggleTaskDone(bool value) async {
@@ -285,9 +312,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       return;
     }
 
-    await AppScope.of(context).tasks.setTaskDone(task.id, value);
+    final services = AppScope.of(context);
+    await services.tasks.setTaskDone(task.id, value);
     if (!mounted) {
       return;
+    }
+    if (value) {
+      services.audio.playEffect(AudioEffect.taskComplete);
     }
     setState(() {
       _task = _copyTask(task, isDone: value, isBurned: nextBurned);
@@ -1065,31 +1096,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     return created;
   }
 
-  void _wrapSelection(String prefix, String suffix, {int? cursorOffset}) {
-    final controller = _noteController;
-    final selection = controller.selection;
-    if (!selection.isValid) {
-      return;
-    }
-    final text = controller.text;
-    final start = selection.start;
-    final end = selection.end;
-    final selected = start >= 0 && end >= 0 && end > start
-        ? text.substring(start, end)
-        : '';
-    final replacement = '$prefix$selected$suffix';
-    final newText = text.replaceRange(start, end, replacement);
-    final cursor = start + (cursorOffset ?? prefix.length);
-
-    controller.value = controller.value.copyWith(
-      text: newText,
-      selection: TextSelection.collapsed(
-        offset: selected.isEmpty ? cursor : start + replacement.length,
-      ),
-    );
-    _onNoteChanged(controller.text);
-  }
-
   void _insertLinePrefix(String prefix) {
     final controller = _noteController;
     final selection = controller.selection;
@@ -1203,27 +1209,40 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             ),
             const SizedBox(height: 6),
             if (task.isBurned) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE3E3),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFF4B2B2)),
-                  ),
-                  child: const Text(
-                    'Сгоревшая задача',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.error,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE3E3),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFF4B2B2)),
+                    ),
+                    child: const Text(
+                      'Сгоревшая задача',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: _resurrectTask,
+                    icon: const Icon(Icons.auto_fix_high, size: 16),
+                    label: const Text('Воскресить'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF5722),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
             ],
@@ -1511,22 +1530,24 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     String? note,
     bool? isDone,
     bool? isBurned,
+    bool? isHardcore,
     int? categoryId,
     bool setCategory = false,
     ReminderType? reminderType,
     int? reminderMinutes,
     bool setReminder = false,
   }) {
-    return Task(
-      id: base.id,
-      title: title ?? base.title,
-      isDone: isDone ?? base.isDone,
-      isBurned: isBurned ?? base.isBurned,
-      createdAt: base.createdAt,
-      note: note ?? base.note,
-      categoryId: setCategory ? categoryId : base.categoryId,
-      reminderType: setReminder ? reminderType : base.reminderType,
-      reminderMinutes: setReminder ? reminderMinutes : base.reminderMinutes,
+    return base.copyWith(
+      title: title,
+      note: note,
+      isDone: isDone,
+      isBurned: isBurned,
+      isHardcore: isHardcore,
+      categoryId: categoryId,
+      setCategory: setCategory,
+      reminderType: reminderType,
+      reminderMinutes: reminderMinutes,
+      setReminder: setReminder,
     );
   }
 
@@ -1608,7 +1629,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             ),
           ],
         );
-      case _NoteScreenMode.view:
       default:
         return FloatingActionButton(
           heroTag: 'fab_actions',

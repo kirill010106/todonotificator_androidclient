@@ -8,6 +8,7 @@ import 'data/local_database.dart';
 import 'data/local_repositories.dart';
 import 'services/gamification_service.dart';
 import 'services/notification_service.dart';
+import 'services/audio_service.dart';
 import 'ui/theme/app_colors.dart';
 
 Future<void> main() async {
@@ -17,11 +18,14 @@ Future<void> main() async {
   final settings = LocalSettingsRepository(database);
   final tasks = LocalTaskRepository(database, settings);
   final gamificationRepo = LocalGamificationRepository(database);
-  final gamification = GamificationService(gamificationRepo);
+  final audio = AudioService();
+  final gamification = GamificationService(gamificationRepo, audio);
   tasks.gamification = gamification;
   final navigation = AppNavigationState();
   final notifications = NotificationService();
   await notifications.init();
+
+  // final audio = AudioService();  <- already moved up
 
   // Load current user so XP is attributed correctly from the first session.
   final userId = await settings.getCurrentUserId();
@@ -32,6 +36,7 @@ Future<void> main() async {
   final timer = TimerController(
     tasks: tasks,
     gamification: gamification,
+    audio: audio,
     notifications: notifications,
     userId: userId,
   );
@@ -45,6 +50,7 @@ Future<void> main() async {
     notifications: notifications,
     gamification: gamification,
     gamificationRepository: gamificationRepo,
+    audio: audio,
   );
 
   runApp(AppScope(services: services, child: const PomodoroTodoApp()));

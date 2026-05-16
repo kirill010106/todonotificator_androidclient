@@ -26,6 +26,7 @@ abstract class TaskRepository {
   Future<List<Task>> fetchTasks({
     TaskFilter filter = TaskFilter.all,
     String? query,
+    bool includeBurned = false,
   });
 
   Future<Task> addTask({required String title});
@@ -45,6 +46,8 @@ abstract class TaskRepository {
   Future<void> setTaskReminder(int id, ReminderType? type, int? minutes);
 
   Future<void> deleteTask(int id);
+
+  Future<void> resurrectTask(int id);
 
   Future<List<TaskItem>> fetchTaskItems(int taskId);
 
