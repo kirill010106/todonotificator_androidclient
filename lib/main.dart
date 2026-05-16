@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import 'app/app_scope.dart';
 import 'app/app_start.dart';
@@ -25,9 +27,6 @@ Future<void> main() async {
   final notifications = NotificationService();
   await notifications.init();
 
-  // final audio = AudioService();  <- already moved up
-
-  // Load current user so XP is attributed correctly from the first session.
   final userId = await settings.getCurrentUserId();
   if (userId != null) {
     await gamification.load(userId);
@@ -40,7 +39,11 @@ Future<void> main() async {
     notifications: notifications,
     userId: userId,
   );
+  
   final auth = LocalAuthRepository(database, settings);
+  final locale = LocaleController(settings);
+  await locale.load();
+
   final services = AppServices(
     auth: auth,
     tasks: tasks,
@@ -51,6 +54,7 @@ Future<void> main() async {
     gamification: gamification,
     gamificationRepository: gamificationRepo,
     audio: audio,
+    locale: locale,
   );
 
   runApp(AppScope(services: services, child: const PomodoroTodoApp()));
@@ -59,39 +63,51 @@ Future<void> main() async {
 class PomodoroTodoApp extends StatelessWidget {
   const PomodoroTodoApp({super.key});
 
-  // Ключ для доступа к главному навигатору из любой точки приложения
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'PomodoroToDo',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-        scaffoldBackgroundColor: AppColors.background,
-        textTheme: const TextTheme(
-          headlineMedium: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryDark,
+    final services = AppScope.of(context);
+
+    return ListenableBuilder(
+      listenable: services.locale,
+      builder: (context, child) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: services.locale.locale,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+            scaffoldBackgroundColor: AppColors.background,
+            textTheme: const TextTheme(
+              headlineMedium: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+              bodyMedium: TextStyle(fontSize: 14, color: AppColors.mutedText),
+              bodySmall: TextStyle(fontSize: 12, color: AppColors.mutedText),
+            ),
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
           ),
-          bodyMedium: TextStyle(fontSize: 14, color: AppColors.mutedText),
-          bodySmall: TextStyle(fontSize: 12, color: AppColors.mutedText),
-        ),
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      home: const AppStart(),
-      // builder не нужен — мини-плеер теперь встроен в HomeScreen
-      builder: (context, child) => child ?? const SizedBox.shrink(),
+          home: const AppStart(),
+          builder: (context, child) => child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }
-

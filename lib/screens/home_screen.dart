@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../app/navigation_state.dart';
@@ -164,18 +165,18 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.mutedText,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: 'Задачи',
+            icon: const Icon(Icons.check_circle_outline),
+            label: AppLocalizations.of(context)!.tabTasks,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.timer_outlined),
-            label: 'Таймер',
+            icon: const Icon(Icons.timer_outlined),
+            label: AppLocalizations.of(context)!.tabTimer,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Профиль',
+            icon: const Icon(Icons.person_outline),
+            label: AppLocalizations.of(context)!.tabProfile,
           ),
         ],
       ),
@@ -222,9 +223,11 @@ class _TimerMiniPlayerSlotState extends State<_TimerMiniPlayerSlot> {
   }
 
   Widget _buildContent(BuildContext context, TimerController timer) {
+    final l10n = AppLocalizations.of(context)!;
     final isFocus = timer.phase == TimerPhase.focus;
-    final phaseName =
-        timer.isPenalty ? 'Штраф' : (isFocus ? 'Фокус' : 'Отдых');
+    final phaseName = timer.isPenalty
+        ? l10n.timerPenalty
+        : (isFocus ? l10n.timerFocus : l10n.timerRest);
     final color = isFocus ? AppColors.primaryDark : const Color(0xFFF5B400);
 
     final seconds =

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../data/models.dart';
@@ -51,6 +52,7 @@ class _GraveyardScreenState extends State<GraveyardScreen> {
 
   Future<void> _resurrectTask(Task task) async {
     final repo = AppScope.of(context).tasks;
+    final l10n = AppLocalizations.of(context)!;
     await repo.resurrectTask(task.id);
     if (!mounted) return;
     
@@ -58,7 +60,7 @@ class _GraveyardScreenState extends State<GraveyardScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Задача "${task.title}" воскрешена как Hardcore!'),
+          content: Text(l10n.taskResurrected(task.title)),
           backgroundColor: const Color(0xFFFF5722),
         ),
       );
@@ -75,17 +77,18 @@ class _GraveyardScreenState extends State<GraveyardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6F6),
       appBar: AppBar(
-        title: const Text('Кладбище задач', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(l10n.graveyard, style: const TextStyle(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _burnedTasks.isEmpty
-              ? _buildEmptyState()
+              ? _buildEmptyState(l10n)
               : ListView.separated(
                   padding: const EdgeInsets.all(20),
                   itemCount: _burnedTasks.length,
@@ -104,17 +107,17 @@ class _GraveyardScreenState extends State<GraveyardScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.eco_outlined, size: 64, color: AppColors.mutedText.withAlpha(100)),
           const SizedBox(height: 16),
-          const Text(
-            'На кладбище пусто.\nВаша продуктивность безупречна!',
+          Text(
+            l10n.noBurnedTasks,
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.mutedText),
+            style: const TextStyle(color: AppColors.mutedText),
           ),
         ],
       ),
@@ -137,6 +140,7 @@ class _BurnedTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -188,7 +192,7 @@ class _BurnedTaskCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('Удалить'),
+                  label: Text(l10n.delete),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mutedText,
                     side: const BorderSide(color: Color(0xFFE1E1E1)),
@@ -201,7 +205,7 @@ class _BurnedTaskCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onResurrect,
                   icon: const Icon(Icons.auto_fix_high, size: 18),
-                  label: const Text('Воскресить'),
+                  label: Text(l10n.resurrect),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF5722),
                     foregroundColor: Colors.white,

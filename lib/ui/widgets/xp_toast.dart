@@ -103,32 +103,35 @@ class _XpToastWidgetState extends State<_XpToastWidget>
             child: Opacity(
               opacity: _opacity.value,
               child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: color.withAlpha(80),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withAlpha(40),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: color.withAlpha(80),
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withAlpha(40),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ),

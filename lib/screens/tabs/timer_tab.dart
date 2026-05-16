@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../../app/app_scope.dart';
 import '../../app/timer_controller.dart';
 import '../../data/models.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../view_models/timer_view_model.dart';
 import '../task_detail_screen.dart';
 
 class TimerTab extends StatefulWidget {
@@ -14,85 +16,50 @@ class TimerTab extends StatefulWidget {
 }
 
 class _TimerTabState extends State<TimerTab> {
-  TimerController? _controller;
-  bool _didAttach = false;
+  TimerViewModel? _vm;
+  bool _didInitVm = false;
   bool _dialogOpen = false;
-  Task? _task;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_didAttach) {
-      _didAttach = true;
-      _controller = AppScope.of(context).timer;
-      _controller?.addListener(_handleTimerChange);
-      _refreshTask();
+    if (!_didInitVm) {
+      _didInitVm = true;
+      final scope = AppScope.of(context);
+      _vm = TimerViewModel(
+        taskRepository: scope.tasks,
+        timerController: scope.timer,
+      );
+      _vm!.addListener(_onVmChanged);
+      _vm!.load();
     }
   }
 
   @override
   void dispose() {
-    _controller?.removeListener(_handleTimerChange);
+    _vm?.removeListener(_onVmChanged);
+    _vm?.dispose();
     super.dispose();
   }
 
-  void _handleTimerChange() {
-    if (!mounted) {
-      return;
-    }
+  void _onVmChanged() {
+    if (!mounted) return;
     setState(() {});
     _maybeShowDialog();
-    _refreshTask();
-  }
-
-  Future<void> _refreshTask({bool force = false}) async {
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
-    if (controller.mode != TimerMode.note || controller.taskId == null) {
-      if (_task != null) {
-        setState(() {
-          _task = null;
-        });
-      }
-      return;
-    }
-    if (!force && _task?.id == controller.taskId) {
-      return;
-    }
-    final task = await AppScope.of(context).tasks.getTask(controller.taskId!);
-    if (!mounted) {
-      return;
-    }
-    if (task == null) {
-      if (_task != null) {
-        setState(() {
-          _task = null;
-        });
-      }
-      return;
-    }
-    setState(() {
-      _task = task;
-    });
   }
 
   void _maybeShowDialog() {
-    if (_dialogOpen) {
-      return;
-    }
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
-    final dialog = controller.pendingDialog;
-    if (dialog == null) {
-      return;
-    }
+    if (_dialogOpen) return;
+    
+    final vm = _vm;
+    if (vm == null) return;
+    
+    final dialog = vm.pendingDialog;
+    if (dialog == null) return;
+    
     _dialogOpen = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final consumed = controller.consumeDialog();
+      final consumed = vm.consumeDialog();
       if (consumed == TimerDialog.checkCompletion) {
         await _showCompletionDialog();
       } else if (consumed == TimerDialog.penalty) {
@@ -102,13 +69,14 @@ class _TimerTabState extends State<TimerTab> {
       }
       _dialogOpen = false;
       
-      if (mounted && controller.pendingDialog != null) {
+      if (mounted && vm.pendingDialog != null) {
         _maybeShowDialog();
       }
     });
   }
 
   Future<void> _showStrictModeViolationDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -130,14 +98,14 @@ class _TimerTabState extends State<TimerTab> {
                   child: const Icon(Icons.timer_off_outlined, color: Color(0xFFD32F2F), size: 28),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Сессия прервана!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Text(
+                  l10n.sessionInterrupted,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Вы нарушили "Строгий режим", свернув приложение более чем на 10 секунд. Текущая сессия аннулирована.',
+                  l10n.strictModeViolationDesc,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.mutedText,
                         height: 1.4,
@@ -158,7 +126,7 @@ class _TimerTabState extends State<TimerTab> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('Понятно', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(l10n.gotIt, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -170,10 +138,9 @@ class _TimerTabState extends State<TimerTab> {
   }
 
   Future<void> _showCompletionDialog() async {
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
+    final vm = _vm;
+    if (vm == null) return;
+    final l10n = AppLocalizations.of(context)!;
 
     final result = await showDialog<_CompletionResult>(
       context: context,
@@ -196,14 +163,14 @@ class _TimerTabState extends State<TimerTab> {
                   child: const Icon(Icons.check_circle_outline, color: Colors.white, size: 28),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Вы выполнили задачу?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Text(
+                  l10n.didYouCompleteTask,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Сессия завершена. Отметьте прогресс для сохранения статистики.',
+                  l10n.sessionFinishedDesc,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.mutedText,
                         height: 1.4,
@@ -225,7 +192,7 @@ class _TimerTabState extends State<TimerTab> {
                       elevation: 0,
                     ),
                     icon: const Icon(Icons.check_circle_outline, size: 20),
-                    label: const Text('Да, я справился!', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: Text(l10n.yesIHandledIt, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -243,7 +210,7 @@ class _TimerTabState extends State<TimerTab> {
                       elevation: 0,
                     ),
                     icon: const Icon(Icons.cancel_outlined, size: 20),
-                    label: const Text('Нет, сдаться', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: Text(l10n.noGiveUp, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -260,7 +227,7 @@ class _TimerTabState extends State<TimerTab> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.arrow_back, size: 20),
-                    label: const Text('Вернуться к работе', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: Text(l10n.backToWork, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -272,25 +239,23 @@ class _TimerTabState extends State<TimerTab> {
 
     switch (result) {
       case _CompletionResult.completed:
-        await controller.confirmTaskCompleted();
+        await vm.confirmTaskCompleted();
         break;
       case _CompletionResult.penalty:
-        await controller.declineTaskCompleted();
+        await vm.declineTaskCompleted();
         break;
       case _CompletionResult.backToWork:
-        controller.returnToWork();
+        vm.returnToWork();
         break;
       default:
-        controller.returnToWork();
+        vm.returnToWork();
     }
-    await _refreshTask(force: true);
   }
 
   Future<void> _showPenaltyDialog() async {
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
+    final vm = _vm;
+    if (vm == null) return;
+    final l10n = AppLocalizations.of(context)!;
 
     final result = await showDialog<_PenaltyResult>(
       context: context,
@@ -313,14 +278,14 @@ class _TimerTabState extends State<TimerTab> {
                   child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFD32F2F), size: 28),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Не сдавайся, ты почти у цели!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Text(
+                  l10n.dontGiveUp,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'В случае сдачи вы получите штраф к очкам опыта. Осталось совсем немного до конца таймера.',
+                  l10n.penaltyDesc,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.mutedText,
                         height: 1.4,
@@ -341,7 +306,7 @@ class _TimerTabState extends State<TimerTab> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('Вернуться к работе', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(l10n.backToWork, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -356,7 +321,7 @@ class _TimerTabState extends State<TimerTab> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Все равно сдаться', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(l10n.surrenderAnyway, style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -368,24 +333,24 @@ class _TimerTabState extends State<TimerTab> {
 
     switch (result) {
       case _PenaltyResult.backToWork:
-        controller.penaltyReturnToWork();
+        vm.penaltyReturnToWork();
         break;
       case _PenaltyResult.surrender:
       default:
-        await controller.surrenderTask();
-        await _refreshTask(force: true);
+        await vm.surrenderTask();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final controller = _controller;
-    if (controller == null) {
-      return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
+    final vm = _vm;
+    if (vm == null) {
+      return const Center(child: CircularProgressIndicator());
     }
-
-    final showNoteMode = controller.mode == TimerMode.note && _task != null;
+    
+    final showNoteMode = vm.mode == TimerMode.note && vm.task != null;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -393,20 +358,20 @@ class _TimerTabState extends State<TimerTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildTimerCard(theme, controller, showNoteMode),
+            _buildTimerCard(theme, l10n, vm, showNoteMode),
             const SizedBox(height: 16),
             if (!showNoteMode) ...[
               Text(
-                'Свободный режим',
+                l10n.freeMode,
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.mutedText,
                 ),
               ),
               const SizedBox(height: 8),
-              _buildFreeModeCard(theme, controller),
+              _buildFreeModeCard(theme, l10n, vm),
             ] else ...[
-              _buildNoteCard(theme, controller, _task!),
+              _buildNoteCard(theme, l10n, vm, vm.task!),
             ],
           ],
         ),
@@ -416,7 +381,8 @@ class _TimerTabState extends State<TimerTab> {
 
   Widget _buildTimerCard(
     ThemeData theme,
-    TimerController controller,
+    AppLocalizations l10n,
+    TimerViewModel vm,
     bool showNoteMode,
   ) {
     return Container(
@@ -435,7 +401,7 @@ class _TimerTabState extends State<TimerTab> {
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              _cycleLabel(controller),
+              _cycleLabel(vm, l10n),
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -445,7 +411,7 @@ class _TimerTabState extends State<TimerTab> {
           ),
           const SizedBox(height: 8),
           Text(
-            _phaseLabel(controller, showNoteMode),
+            _phaseLabel(vm, l10n, showNoteMode),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.mutedText,
             ),
@@ -453,7 +419,7 @@ class _TimerTabState extends State<TimerTab> {
           ),
           const SizedBox(height: 8),
           Text(
-            _formatDuration(controller.remaining),
+            _formatDuration(vm.remaining),
             style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w700,
@@ -461,21 +427,21 @@ class _TimerTabState extends State<TimerTab> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildTimerButtons(controller, _task),
+          _buildTimerButtons(vm, l10n),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Дебаг (сек вместо мин):',
-                style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+              Text(
+                l10n.debugMode,
+                style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
               ),
               const SizedBox(width: 8),
               SizedBox(
                 height: 24,
                 child: Switch(
-                  value: controller.debugFastMode,
-                  onChanged: controller.setDebugFastMode,
+                  value: vm.debugFastMode,
+                  onChanged: vm.setDebugFastMode,
                   activeThumbColor: AppColors.primary,
                 ),
               ),
@@ -486,20 +452,20 @@ class _TimerTabState extends State<TimerTab> {
     );
   }
 
-  Widget _buildTimerButtons(TimerController controller, Task? task) {
-    if (controller.phase == TimerPhase.idle) {
-      final isDone = controller.mode == TimerMode.note && task != null && task.isDone;
+  Widget _buildTimerButtons(TimerViewModel vm, AppLocalizations l10n) {
+    if (vm.phase == TimerPhase.idle) {
+      final isDone = vm.mode == TimerMode.note && vm.task != null && vm.task!.isDone;
       return SizedBox(
         width: 140,
         child: ElevatedButton(
           onPressed: isDone
               ? null
               : () {
-                  if (controller.mode == TimerMode.note &&
-                      controller.taskId != null) {
-                    controller.startForTask(controller.taskId!);
+                  if (vm.mode == TimerMode.note &&
+                      vm.taskId != null) {
+                    vm.startForTask(vm.taskId!);
                   } else {
-                    controller.startFree();
+                    vm.startFree();
                   }
                 },
           style: ElevatedButton.styleFrom(
@@ -508,54 +474,54 @@ class _TimerTabState extends State<TimerTab> {
             padding: const EdgeInsets.symmetric(vertical: 10),
             shape: const StadiumBorder(),
           ),
-          child: const Text('Начать'),
+          child: Text(l10n.start),
         ),
       );
     }
 
-    if (controller.phase == TimerPhase.breakTime ||
-        controller.phase == TimerPhase.rest) {
+    if (vm.phase == TimerPhase.breakTime ||
+        vm.phase == TimerPhase.rest) {
       return SizedBox(
         width: 160,
         child: ElevatedButton(
-          onPressed: controller.skipBreak,
+          onPressed: vm.skipBreak,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 10),
             shape: const StadiumBorder(),
           ),
-          child: const Text('Продолжить'),
+          child: Text(l10n.resume),
         ),
       );
     }
 
-    if (controller.isRunning) {
+    if (vm.isRunning) {
       return Row(
         children: [
           Expanded(
             child: OutlinedButton(
-              onPressed: controller.pause,
+              onPressed: vm.pause,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.mutedText,
                 side: const BorderSide(color: Color(0xFFCDD5CF)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: const StadiumBorder(),
               ),
-              child: const Text('Приостановить'),
+              child: Text(l10n.pause),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: controller.requestStop,
+              onPressed: vm.requestStop,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: const StadiumBorder(),
               ),
-              child: const Text('Закончить'),
+              child: Text(l10n.finish),
             ),
           ),
         ],
@@ -566,34 +532,34 @@ class _TimerTabState extends State<TimerTab> {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: controller.resume,
+            onPressed: vm.resume,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: const StadiumBorder(),
             ),
-            child: const Text('Продолжить'),
+            child: Text(l10n.resume),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: OutlinedButton(
-            onPressed: controller.requestStop,
+            onPressed: vm.requestStop,
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.mutedText,
               side: const BorderSide(color: Color(0xFFCDD5CF)),
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: const StadiumBorder(),
             ),
-            child: const Text('Закончить'),
+            child: Text(l10n.finish),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFreeModeCard(ThemeData theme, TimerController controller) {
+  Widget _buildFreeModeCard(ThemeData theme, AppLocalizations l10n, TimerViewModel vm) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -601,13 +567,14 @@ class _TimerTabState extends State<TimerTab> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE1E6E2)),
       ),
-      child: _buildStatsRow(theme, controller),
+      child: _buildStatsRow(theme, l10n, vm),
     );
   }
 
   Widget _buildNoteCard(
     ThemeData theme,
-    TimerController controller,
+    AppLocalizations l10n,
+    TimerViewModel vm,
     Task task,
   ) {
     final noteText = extractPlainNote(task.note);
@@ -620,7 +587,6 @@ class _TimerTabState extends State<TimerTab> {
             builder: (_) => TaskDetailScreen(taskId: task.id),
           ),
         );
-        await _refreshTask();
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -633,7 +599,7 @@ class _TimerTabState extends State<TimerTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Заметка',
+              l10n.appNote,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.mutedText,
@@ -641,7 +607,7 @@ class _TimerTabState extends State<TimerTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              task.title.isEmpty ? 'Без названия' : task.title,
+              task.title.isEmpty ? l10n.noTitle : task.title,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -650,7 +616,7 @@ class _TimerTabState extends State<TimerTab> {
             const SizedBox(height: 6),
             Text(
               noteText.isEmpty
-                  ? 'Добавьте описание заметки...'
+                  ? l10n.addNoteDescriptionHint
                   : noteText,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
@@ -660,29 +626,29 @@ class _TimerTabState extends State<TimerTab> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildStatsRow(theme, controller),
+            _buildStatsRow(theme, l10n, vm),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatsRow(ThemeData theme, TimerController controller) {
+  Widget _buildStatsRow(ThemeData theme, AppLocalizations l10n, TimerViewModel vm) {
     return Row(
       children: [
         Expanded(
           child: _StatChip(
             icon: Icons.check_circle_outline,
-            title: 'Выполнено',
-            value: '${controller.completedPomodoros} Помодоро',
+            title: l10n.completed,
+            value: l10n.pomodoroCount(vm.completedPomodoros),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _StatChip(
             icon: Icons.track_changes,
-            title: 'Фокус',
-            value: '${controller.focusRate}%',
+            title: l10n.focus,
+            value: '${vm.focusRate}%',
           ),
         ),
       ],
@@ -695,35 +661,33 @@ class _TimerTabState extends State<TimerTab> {
     return '${totalMinutes.toString().padLeft(2, '0')}:$seconds';
   }
 
-  String _phaseLabel(TimerController controller, bool showNoteMode) {
-    if (controller.isPenalty) {
-      return 'Штрафной фокус';
+  String _phaseLabel(TimerViewModel vm, AppLocalizations l10n, bool showNoteMode) {
+    if (vm.isPenalty) {
+      return l10n.penaltyFocus;
     }
-    switch (controller.phase) {
+    switch (vm.phase) {
       case TimerPhase.breakTime:
-        return 'Пора отдохнуть';
+        return l10n.timeToRest;
       case TimerPhase.rest:
-        return 'Пора серьезно отдохнуть';
+        return l10n.timeToSeriousRest;
       case TimerPhase.focus:
       case TimerPhase.idle:
         return showNoteMode
-            ? 'Осталось сфокусироваться!'
-            : 'Свободный режим фокуса';
+            ? l10n.remainToFocus
+            : l10n.freeFocusMode;
     }
   }
 
-  String _cycleLabel(TimerController controller) {
-    final cycle = controller.cycle;
-    if (controller.phase == TimerPhase.breakTime) {
+  String _cycleLabel(TimerViewModel vm, AppLocalizations l10n) {
+    final cycle = vm.cycle;
+    if (vm.phase == TimerPhase.breakTime) {
       final next = cycle == TimerController.totalCycles ? 1 : cycle + 1;
-      return 'Цикл $cycle/${TimerController.totalCycles} → '
-          'Цикл $next/${TimerController.totalCycles}';
+      return l10n.cycleNextLabel(cycle, next, TimerController.totalCycles);
     }
-    if (controller.phase == TimerPhase.rest) {
-      return 'Цикл $cycle/${TimerController.totalCycles} → '
-          'Цикл 1/${TimerController.totalCycles}';
+    if (vm.phase == TimerPhase.rest) {
+      return l10n.cycleNextLabel(cycle, 1, TimerController.totalCycles);
     }
-    return 'Цикл $cycle/${TimerController.totalCycles}';
+    return l10n.cycleLabel(cycle, TimerController.totalCycles);
   }
 }
 

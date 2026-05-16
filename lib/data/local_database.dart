@@ -22,7 +22,7 @@ class LocalDatabase {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE users ('
@@ -44,7 +44,8 @@ class LocalDatabase {
           'is_done INTEGER NOT NULL DEFAULT 0, '
           'is_burned INTEGER NOT NULL DEFAULT 0, '
           'is_hardcore INTEGER NOT NULL DEFAULT 0, '
-          'created_at INTEGER NOT NULL'
+          'created_at INTEGER NOT NULL, '
+          'xp_awarded INTEGER NOT NULL DEFAULT 0'
           ')',
         );
         await db.execute(
@@ -61,7 +62,8 @@ class LocalDatabase {
           'task_id INTEGER NOT NULL, '
           'text TEXT NOT NULL, '
           'is_done INTEGER NOT NULL DEFAULT 0, '
-          'position INTEGER NOT NULL DEFAULT 0'
+          'position INTEGER NOT NULL DEFAULT 0, '
+          'xp_awarded INTEGER NOT NULL DEFAULT 0'
           ')',
         );
         await db.execute(
@@ -141,6 +143,14 @@ class LocalDatabase {
           await db.execute(
             'ALTER TABLE tasks ADD COLUMN is_hardcore INTEGER '
             'NOT NULL DEFAULT 0',
+          );
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+            'ALTER TABLE tasks ADD COLUMN xp_awarded INTEGER NOT NULL DEFAULT 0',
+          );
+          await db.execute(
+            'ALTER TABLE task_items ADD COLUMN xp_awarded INTEGER NOT NULL DEFAULT 0',
           );
         }
       },

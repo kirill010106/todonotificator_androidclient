@@ -187,6 +187,12 @@ class TimerController extends ChangeNotifier {
   Future<void> strictModeViolation() async {
     if (_mode == TimerMode.note && _taskId != null) {
       await _tasks.setTaskBurned(_taskId!, true);
+      
+      _notifications?.showNotification(
+        id: 3000,
+        title: 'Строгий режим нарушен!',
+        body: 'Задача была уничтожена или отправлена на кладбище.',
+      );
     }
     _timer?.cancel();
     _phase = TimerPhase.idle;
@@ -281,13 +287,20 @@ class TimerController extends ChangeNotifier {
   void _updateOngoingNotification() {
     if (_notifications == null) return;
     if (!_ongoingNotificationsEnabled) return;
-    if (_mode != TimerMode.note || _taskId == null) return;
+    
     final minutes = _remaining.inMinutes;
     final seconds = _remaining.inSeconds
         .remainder(60)
         .toString()
         .padLeft(2, '0');
-    final title = 'Таймер запущен';
+    
+    String title;
+    if (_mode == TimerMode.note && _taskId != null) {
+      title = 'Таймер задачи запущен';
+    } else {
+      title = 'Таймер запущен';
+    }
+    
     final body = 'Осталось $minutes:$seconds';
     _notifications.showOngoingNotification(id: 2000, title: title, body: body);
   }

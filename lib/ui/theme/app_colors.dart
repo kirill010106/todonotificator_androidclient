@@ -12,4 +12,9 @@ class AppColors {
   static const cardSelected = Color(0xFFDCE6E2);
   static const error = Color(0xFFE25C5C);
   static const errorBg = Color(0xFFFDE7E7);
+  
+  static const hardcore = Color(0xFFFF5722);
+  static const surface = Color(0xFFF6FAF7);
+  static const chipBackground = Color(0xFFE6EAE7);
+  static const overlayBackground = Color(0xFFF0F4F2);
 }

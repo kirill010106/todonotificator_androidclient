@@ -1,0 +1,235 @@
+{
+  "appTitle": "ToDo Notificator",
+  "tabTasks": "Tasks",
+  "tabTimer": "Timer",
+  "tabProfile": "Profile",
+  "searchHint": "Search...",
+  "filterAll": "All",
+  "filterNotDone": "Not Done",
+  "filterDone": "Done",
+  "filterBurned": "Burned",
+  "allCategories": "All Categories",
+  "taskTitleHint": "Task Title",
+  "noteHint": "Extra thoughts can be recorded here...",
+  "checklist": "Checklist",
+  "addChecklistItem": "Add item",
+  "category": "Category",
+  "reminder": "Reminder",
+  "manageCategories": "Manage Categories",
+  "resurrect": "Resurrect",
+  "deleteTask": "Delete Task?",
+  "deleteConfirm": "This action cannot be undone.",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "save": "Save",
+  "edit": "Edit",
+  "done": "Done",
+  "burned": "Burned",
+  "timerPenalty": "Penalty",
+  "timerFocus": "Focus",
+  "timerRest": "Rest",
+  "emptyTasks": "Ready for new achievements?\nThe first task is the most important!",
+  "loadErrorTitle": "Loading Error",
+  "retry": "Retry",
+  "taskHardcoreBonus": "Hardcore: x1.5 XP",
+  "taskResurrected": "Task \"{title}\" resurrected as Hardcore!",
+  "appNote": "Note",
+  "taskBurnedStatus": "Burned Task",
+  "addCategory": "+ Add",
+  "newCategory": "New Category",
+  "existingCategories": "Existing",
+  "noCategory": "No Category",
+  "selectCategory": "Select Category",
+  "addReminder": "Add Reminder",
+  "frequency": "Frequency",
+  "time": "Time",
+  "noReminder": "No Reminder",
+  "ready": "Ready",
+  "once": "Once",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "custom": "Custom",
+  "notesCount": "{count, plural, =0{no notes} =1{1 note} other{{count} notes}}",
+  "taskLoadError": "Failed to open note. Please try again.",
+  "enterTitle": "Please enter a task title.",
+  "categoryNameHint": "Name",
+  "alreadyDone": "Task is already done.",
+  "sessionInterrupted": "Session Interrupted!",
+  "strictModeViolationDesc": "You violated \"Strict Mode\" by switching from the app for more than 10 seconds. The current session has been annulled.",
+  "gotIt": "Got it",
+  "didYouCompleteTask": "Did you complete the task?",
+  "sessionFinishedDesc": "Session finished. Mark your progress to save statistics.",
+  "yesIHandledIt": "Yes, I handled it!",
+  "noGiveUp": "No, give up",
+  "backToWork": "Back to work",
+  "dontGiveUp": "Don't give up, you're almost there!",
+  "penaltyDesc": "If you give up now, you will receive a penalty to your experience points. There's only a little time left.",
+  "surrenderAnyway": "Surrender anyway",
+  "freeMode": "Free Mode",
+  "noTitle": "No Title",
+  "addNoteDescriptionHint": "Add a note description...",
+  "completed": "Completed",
+  "pomodoroCount": "{count, plural, =0{no Pomodoros} =1{1 Pomodoro} other{{count} Pomodoros}}",
+  "@pomodoroCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "focus": "Focus",
+  "cycleLabel": "Cycle {current}/{total}",
+  "@cycleLabel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cycleNextLabel": "Cycle {current}/{total} → Cycle {next}/{total}",
+  "@cycleNextLabel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "next": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "penaltyFocus": "Penalty Focus",
+  "timeToRest": "Time to rest",
+  "timeToSeriousRest": "Time for a serious rest",
+  "remainToFocus": "Remaining to focus!",
+  "freeFocusMode": "Free focus mode",
+  "debugMode": "Debug (sec instead of min):",
+  "start": "Start",
+  "pause": "Pause",
+  "finish": "Finish",
+  "resume": "Resume",
+  "logoutConfirmTitle": "Logout Confirmation",
+  "logoutConfirmDesc": "Are you sure you want to log out?\nYou will be taken to the login screen.",
+  "user": "User",
+  "levelLabel": "Level {level}  |  {xp} XP",
+  "@levelLabel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "xpToNextLevel": "{current} / {next} XP to level {level}",
+  "@xpToNextLevel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "next": {
+        "type": "int"
+      },
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "statStreak": "streak",
+  "statCompleted": "completed",
+  "statBurned": "burned",
+  "achievements": "Achievements",
+  "unlockedCount": "{unlocked} / {total} unlocked",
+  "@unlockedCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyGoal": "Daily Goal",
+  "intervals": "Intervals",
+  "tasks": "Tasks",
+  "progress": "Progress",
+  "passed": "Passed",
+  "left": "Left",
+  "logout": "Logout",
+  "settings": "Settings",
+  "appSettings": "APP SETTINGS",
+  "statusHeader": "STATUS",
+  "accountHeader": "ACCOUNT",
+  "notifications": "Notifications",
+  "categories": "Categories",
+  "strictMode": "Strict Mode",
+  "strictModeDesc": "Penalty for minimizing the app",
+  "goal": "Goal",
+  "currentActivityDesc": "Your current activity",
+  "support": "Support",
+  "changePassword": "Change Password",
+  "deleteAccount": "Delete Account",
+  "versionLabel": "Version: {version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "areYouSure": "Are you sure?",
+  "deleteAccountDesc": "Do you really want to delete your account?\nThis action cannot be undone.\nAll your information will be deleted from our servers.",
+  "deleteTimer": "Delete ({seconds})",
+  "login": "Login",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "nickname": "Nickname",
+  "welcomeBack": "Welcome Back",
+  "createAccount": "Create Account",
+  "noAccount": "Don't have an account?",
+  "haveAccount": "Already have an account?",
+  "graveyard": "Graveyard",
+  "noBurnedTasks": "No burned tasks yet",
+  "locked": "Locked",
+  "unlocked": "Unlocked",
+  "notificationSettings": "Notification Settings",
+  "dailyReminder": "Daily Reminder",
+  "sessionReminder": "Session Reminder",
+  "saveChanges": "Save Changes",
+  "error": "Error",
+  "success": "Success",
+  "language": "Language",
+  "russian": "Russian",
+  "english": "English",
+  "noCategories": "No categories yet",
+  "deleteCategory": "Delete category?",
+  "migrateTo": "Or migrate to:",
+  "leaveCategoryless": "Leave without category",
+  "notesCountShort": "Notes: {count}",
+  "@notesCountShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editCategory": "Edit Category",
+  "more": "More...",
+  "choosePace": "Choose your pace",
+  "paceDescription": "Adjust focus for your tasks",
+  "paceEasyTitle": "EASY",
+  "paceEasyDesc": "Smooth immersion into work",
+  "paceToneTitle": "IN TONE",
+  "paceToneDesc": "Optimal balance of strength",
+  "paceRoastTitle": "ROAST",
+  "paceRoastDesc": "Maximum concentration",
+  "letsGo": "Let's go!"
+}

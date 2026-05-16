@@ -49,6 +49,20 @@ abstract class TaskRepository {
 
   Future<void> resurrectTask(int id);
 
+  /// Saves a task with all its associated data in a single atomic operation.
+  Future<int> saveTaskFull({
+    int? id,
+    required String title,
+    String? note,
+    int? categoryId,
+    ReminderType? reminderType,
+    int? reminderMinutes,
+    bool isDone = false,
+    bool isBurned = false,
+    bool isHardcore = false,
+    List<TaskItem> items = const [],
+  });
+
   Future<List<TaskItem>> fetchTaskItems(int taskId);
 
   Future<TaskItem> addTaskItem({
@@ -66,6 +80,16 @@ abstract class TaskRepository {
     required String name,
     required int color,
   });
+
+  Future<void> updateCategory({
+    required int id,
+    String? name,
+    int? color,
+  });
+
+  /// Deletes a category and optionally migrates its tasks to another category.
+  /// If [migrateToId] is null, tasks become category-less.
+  Future<void> deleteCategory(int id, {int? migrateToId});
 }
 
 abstract class SettingsRepository {
@@ -83,6 +107,9 @@ abstract class SettingsRepository {
 
   Future<void> setStrictModeEnabled(bool enabled);
   Future<bool> isStrictModeEnabled();
+
+  Future<void> setLocale(String languageCode);
+  Future<String?> getLocale();
 }
 
 abstract class GamificationRepository {

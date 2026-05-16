@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 import '../app/app_scope.dart';
 import '../ui/theme/app_colors.dart';
 import '../view_models/change_password_view_model.dart';
@@ -43,10 +44,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   void _onViewModelChanged() {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     if (_viewModel!.isSuccess) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Пароль успешно изменен')));
+      ).showSnackBar(SnackBar(content: Text(l10n.success)));
       Navigator.of(context).pop();
     }
     setState(() {});
@@ -65,13 +67,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final vm = _viewModel;
     if (vm == null) return const Scaffold();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Смена пароля',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        title: Text(
+          l10n.changePassword,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -84,27 +87,27 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Введите текущий и новый пароли для обновления доступа.',
-                style: TextStyle(color: AppColors.mutedText, height: 1.5),
+              Text(
+                l10n.changePassword,
+                style: const TextStyle(color: AppColors.mutedText, height: 1.5),
               ),
               const SizedBox(height: 32),
               _buildField(
                 controller: _oldPasswordController,
-                label: 'Текущий пароль',
+                label: l10n.password,
                 isPassword: true,
                 validator: (v) =>
-                    v == null || v.isEmpty ? 'Введите текущий пароль' : null,
+                    v == null || v.isEmpty ? l10n.password : null,
               ),
               const SizedBox(height: 16),
               _buildField(
                 controller: _newPasswordController,
-                label: 'Новый пароль',
+                label: l10n.password,
                 isPassword: true,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Введите новый пароль';
+                  if (v == null || v.isEmpty) return l10n.password;
                   if (v.length < 6) {
-                    return 'Пароль должен быть не менее 6 символов';
+                    return l10n.error;
                   }
                   return null;
                 },
@@ -112,11 +115,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 16),
               _buildField(
                 controller: _confirmPasswordController,
-                label: 'Подтвердите пароль',
+                label: l10n.password,
                 isPassword: true,
                 validator: (v) {
                   if (v != _newPasswordController.text) {
-                    return 'Пароли не совпадают';
+                    return l10n.error;
                   }
                   return null;
                 },
@@ -150,9 +153,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Сохранить новый пароль',
-                        style: TextStyle(
+                    : Text(
+                        l10n.saveChanges,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../ui/theme/app_colors.dart';
@@ -44,6 +45,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final vm = _viewModel;
     if (vm == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6FAF7),
@@ -54,7 +56,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Уведомления', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(l10n.notifications, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -62,7 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSectionHeader('PUSH-УВЕДОМЛЕНИЯ'),
+              _buildSectionHeader(l10n.notifications.toUpperCase()),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -72,22 +74,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: Column(
                   children: [
                     _buildSwitchTile(
-                      title: 'Таймер завершен',
-                      subtitle: 'Сигнал об окончании фокуса',
+                      title: l10n.sessionReminder,
+                      subtitle: l10n.sessionReminder,
                       value: vm.timerEnd,
                       onChanged: vm.setTimerEnd,
                     ),
                     const Divider(height: 1, indent: 16),
                     _buildSwitchTile(
-                      title: 'Перерыв начат',
-                      subtitle: 'Напоминание об отдыхе',
+                      title: l10n.tabTimer,
+                      subtitle: l10n.tabTimer,
                       value: vm.breakStart,
                       onChanged: vm.setBreakStart,
                     ),
                     const Divider(height: 1, indent: 16),
                     _buildSwitchTile(
-                      title: 'Ежедневные напоминания',
-                      subtitle: 'Мотивация к началу работы',
+                      title: l10n.dailyReminder,
+                      subtitle: l10n.dailyReminder,
                       value: vm.dailyReminders,
                       onChanged: vm.setDailyReminders,
                     ),
@@ -98,13 +100,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildSectionHeader('РЕЖИМ ТИШИНЫ'),
+                  _buildSectionHeader(l10n.strictMode.toUpperCase()),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: GestureDetector(
                       onTap: vm.toggleQuietMode,
                       child: Text(
-                        vm.quietMode ? 'ВКЛЮЧЕНО' : 'ВЫКЛЮЧЕНО',
+                        vm.quietMode ? l10n.done.toUpperCase() : l10n.cancel.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -126,7 +128,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Уведомления не будут приходить в\nвыбранный промежуток времени.',
+                      l10n.strictModeDesc,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.mutedText,
                             height: 1.4,
@@ -137,7 +139,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       children: [
                         Expanded(
                           child: _buildTimePicker(
-                            label: 'Начало',
+                            label: l10n.start,
                             time: vm.quietStart,
                             onTap: () async {
                               final t = await showTimePicker(context: context, initialTime: vm.quietStart);
@@ -151,7 +153,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                         Expanded(
                           child: _buildTimePicker(
-                            label: 'Конец',
+                            label: l10n.finish,
                             time: vm.quietEnd,
                             onTap: () async {
                               final t = await showTimePicker(context: context, initialTime: vm.quietEnd);
@@ -162,9 +164,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Повторять',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText),
+                    Text(
+                      l10n.frequency,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText),
                     ),
                     const SizedBox(height: 8),
                     Row(

@@ -1,13 +1,15 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../data/models.dart';
 import '../services/audio_service.dart';
 import '../ui/theme/app_colors.dart';
 import '../ui/widgets/rich_note_controller.dart';
+import '../view_models/task_detail_view_model.dart';
+import 'category_management_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   const TaskDetailScreen({super.key, this.taskId});
@@ -26,19 +28,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   final _noteController = RichNoteController();
   final _itemController = TextEditingController();
 
-  Timer? _titleTimer;
-  Timer? _noteTimer;
-
-  Task? _task;
-  List<TaskItem> _items = const [];
-  List<CategoryStats> _categories = const [];
-
-  bool _isLoading = true;
-  bool _hasError = false;
-  bool _didLoad = false;
+  late final TaskDetailViewModel _vm;
+  bool _didInitVm = false;
   bool _seededControllers = false;
-  bool _isSaving = false;
-  int _draftItemSeed = -1;
   _NoteScreenMode _mode = _NoteScreenMode.view;
 
   bool get _isNew => widget.taskId == null;
@@ -64,10 +56,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_didLoad) {
-      _didLoad = true;
-      _load();
+    if (!_didInitVm) {
+      _didInitVm = true;
+      _vm = TaskDetailViewModel(
+        AppScope.of(context).tasks,
+        widget.taskId,
+      );
+      _vm.addListener(_onVmChanged);
+      _vm.load();
+      if (_isNew) {
+        _mode = _NoteScreenMode.editing;
+      }
     }
+  }
+
+  void _onVmChanged() {
+    if (!mounted) return;
+    
+    if (_vm.task != null && !_seededControllers) {
+      _seededControllers = true;
+      _titleController.text = _vm.task!.title;
+      _noteController.loadFromStorage(_vm.task!.note ?? '');
+    }
+    
+    setState(() {});
   }
 
   void _enterEditingMode() {
@@ -95,7 +107,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       await _handleBack();
       return;
     }
-    await _persistExistingEdits();
+    // Update local state in VM then perform full save
+    _vm.updateTitle(_titleController.text);
+    _vm.updateNote(_noteController.toStorage());
+    await _vm.save();
+    
     if (!mounted) {
       return;
     }
@@ -120,174 +136,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   @override
   void dispose() {
     _menuController.dispose();
-    _titleTimer?.cancel();
-    _noteTimer?.cancel();
+    _vm.removeListener(_onVmChanged);
+    _vm.dispose();
     _titleController.dispose();
     _noteController.dispose();
     _itemController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    if (_isNew) {
-      try {
-        final repo = AppScope.of(context).tasks;
-        final categories = await repo.fetchCategories();
-        if (!mounted) {
-          return;
-        }
-        final draft = Task(
-          id: 0,
-          title: '',
-          isDone: false,
-          isBurned: false,
-          isHardcore: false,
-          createdAt: DateTime.now(),
-          note: '',
-          categoryId: null,
-          reminderType: null,
-          reminderMinutes: null,
-        );
-        setState(() {
-          _task = draft;
-          _items = const [];
-          _categories = categories;
-          _isLoading = false;
-          _mode = _NoteScreenMode.editing;
-        });
-        if (!_seededControllers) {
-          _seededControllers = true;
-          _titleController.text = '';
-          _noteController.loadFromStorage('');
-        }
-        return;
-      } catch (_) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-        return;
-      }
-    }
-
-    try {
-      final repo = AppScope.of(context).tasks;
-      final task = await repo.getTask(widget.taskId!);
-      if (task == null) {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-        return;
-      }
-
-      final items = await repo.fetchTaskItems(task.id);
-      final categories = await repo.fetchCategories();
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _task = task;
-        _items = items;
-        _categories = categories;
-        _isLoading = false;
-        _mode = _NoteScreenMode.view;
-      });
-
-      if (!_seededControllers) {
-        _seededControllers = true;
-        _titleController.text = task.title;
-        _noteController.loadFromStorage(task.note);
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
-    }
-  }
-
   void _onTitleChanged(String value) {
-    _titleTimer?.cancel();
-    _titleTimer = Timer(const Duration(milliseconds: 400), () async {
-      final task = _task;
-      if (task == null) {
-        return;
-      }
-      if (_isNew) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _task = _copyTask(task, title: value.trim());
-        });
-        return;
-      }
-
-      final repo = AppScope.of(context).tasks;
-      await repo.updateTaskTitle(task.id, value.trim());
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _task = _copyTask(task, title: value.trim());
-      });
-    });
+    _vm.updateTitle(value);
   }
 
   void _onNoteChanged(String value) {
-    _noteTimer?.cancel();
-    _noteTimer = Timer(const Duration(milliseconds: 400), () async {
-      final task = _task;
-      if (task == null) {
-        return;
-      }
-      final storage = _noteController.toStorage();
-      if (_isNew) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _task = _copyTask(task, note: storage);
-        });
-        return;
-      }
-
-      final repo = AppScope.of(context).tasks;
-      await repo.updateTaskNote(task.id, storage);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _task = _copyTask(task, note: storage);
-      });
-    });
+    _vm.updateNote(_noteController.toStorage());
   }
 
   Future<void> _resurrectTask() async {
-    final task = _task;
+    final task = _vm.task;
     if (task == null) return;
     
-    final repo = AppScope.of(context).tasks;
-    await repo.resurrectTask(task.id);
-    if (!mounted) return;
-    
-    await _load(); // Reload task to update state
+    await _vm.resurrectTask();
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,139 +169,40 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   Future<void> _toggleTaskDone(bool value) async {
-    final task = _task;
-    if (task == null) {
-      return;
-    }
-    final nextBurned = value ? false : task.isBurned;
-    if (_isNew) {
-      setState(() {
-        _task = _copyTask(task, isDone: value, isBurned: nextBurned);
-      });
-      return;
-    }
+    final task = _vm.task;
+    if (task == null) return;
 
-    final services = AppScope.of(context);
-    await services.tasks.setTaskDone(task.id, value);
-    if (!mounted) {
-      return;
-    }
+    await _vm.toggleTaskDone(value);
+    
+    if (!mounted) return;
+    
     if (value) {
-      services.audio.playEffect(AudioEffect.taskComplete);
+      AppScope.of(context).audio.playEffect(AudioEffect.taskComplete);
     }
-    setState(() {
-      _task = _copyTask(task, isDone: value, isBurned: nextBurned);
-    });
   }
 
   Future<void> _addChecklistItem() async {
     final text = _itemController.text.trim();
-    if (text.isEmpty) {
-      return;
-    }
-    final task = _task;
-    if (task == null) {
-      return;
-    }
-
-    if (_isNew) {
-      final item = TaskItem(
-        id: _draftItemSeed--,
-        taskId: 0,
-        text: text,
-        isDone: false,
-        position: _items.length,
-      );
-      setState(() {
-        _items = [..._items, item];
-      });
-      _itemController.clear();
-      return;
-    }
-
-    final item = await AppScope.of(
-      context,
-    ).tasks.addTaskItem(taskId: task.id, text: text);
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _items = [..._items, item];
-    });
+    if (text.isEmpty) return;
+    
+    await _vm.addChecklistItem(text);
     _itemController.clear();
   }
 
   Future<void> _toggleItem(TaskItem item, bool value) async {
-    if (_isNew) {
-      setState(() {
-        _items = _items
-            .map(
-              (current) => current.id == item.id
-                  ? TaskItem(
-                      id: current.id,
-                      taskId: current.taskId,
-                      text: current.text,
-                      isDone: value,
-                      position: current.position,
-                    )
-                  : current,
-            )
-            .toList();
-      });
-      return;
-    }
-
-    await AppScope.of(context).tasks.setTaskItemDone(item.id, value);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _items = _items
-          .map(
-            (current) => current.id == item.id
-                ? TaskItem(
-                    id: current.id,
-                    taskId: current.taskId,
-                    text: current.text,
-                    isDone: value,
-                    position: current.position,
-                  )
-                : current,
-          )
-          .toList();
-    });
+    await _vm.toggleItem(item, value);
   }
 
   Future<void> _deleteItem(TaskItem item) async {
-    if (_isNew) {
-      setState(() {
-        _items = _items.where((current) => current.id != item.id).toList();
-      });
-      return;
-    }
-
-    await AppScope.of(context).tasks.deleteTaskItem(item.id);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _items = _items.where((current) => current.id != item.id).toList();
-    });
+    await _vm.deleteItem(item);
   }
 
   Future<void> _confirmDeleteTask() async {
-    final task = _task;
-    if (task == null) {
-      return;
-    }
-    final repo = AppScope.of(context).tasks;
-    final navigator = Navigator.of(context);
     if (_isNew) {
-      navigator.pop();
+      Navigator.of(context).pop();
       return;
     }
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -453,27 +223,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       },
     );
 
-    if (confirmed != true) {
-      return;
-    }
+    if (confirmed != true) return;
 
-    await repo.deleteTask(task.id);
-    if (!mounted) {
-      return;
-    }
-    navigator.pop();
+    await _vm.deleteTask();
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   Future<void> _openCategorySheet() async {
-    final task = _task;
-    if (task == null) {
-      return;
-    }
-
-    final categories = await AppScope.of(context).tasks.fetchCategories();
-    if (!mounted) {
-      return;
-    }
+    final task = _vm.task;
+    if (task == null) return;
 
     final result = await showModalBottomSheet<Object?>(
       context: context,
@@ -616,7 +375,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     },
                   ),
                   const SizedBox(height: 8),
-                  for (final entry in categories)
+                  for (final entry in _vm.categories)
                     _CategoryTile(
                       title: entry.category.name,
                       color: Color(entry.category.color),
@@ -629,6 +388,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                         Navigator.of(context).pop(entry.category.id);
                       },
                     ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  TextButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop(); // Close sheet first
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CategoryManagementScreen(),
+                        ),
+                      );
+                      // Refresh VM categories after returning
+                      await _vm.load();
+                    },
+                    icon: const Icon(Icons.settings_outlined, size: 18),
+                    label: const Text('Управление категориями'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.mutedText,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -637,67 +415,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       },
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    if (result == null) {
-      return;
-    }
-
-    final repo = AppScope.of(context).tasks;
+    if (result == null) return;
 
     if (result is _CategoryCreateRequest) {
-      final created = await repo.addCategory(
-        name: result.name,
-        color: result.color,
-      );
-      final updatedCategories = await repo.fetchCategories();
-      if (!mounted) {
-        return;
-      }
-      if (_isNew) {
-        setState(() {
-          _categories = updatedCategories;
-          _task = _copyTask(task, setCategory: true, categoryId: created.id);
-        });
-        return;
-      }
-      await repo.setTaskCategory(task.id, created.id);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _categories = updatedCategories;
-        _task = _copyTask(task, setCategory: true, categoryId: created.id);
-      });
+      await _vm.addCategory(result.name, result.color);
       return;
     }
 
     final selectedId = result is _CategoryClearRequest ? null : result as int?;
-    if (_isNew) {
-      setState(() {
-        _task = _copyTask(task, setCategory: true, categoryId: selectedId);
-      });
-      return;
-    }
-
-    await repo.setTaskCategory(task.id, selectedId);
-    final updatedCategories = await repo.fetchCategories();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _categories = updatedCategories;
-      _task = _copyTask(task, setCategory: true, categoryId: selectedId);
-    });
+    await _vm.setCategory(selectedId);
   }
 
   Future<void> _openReminderSheet() async {
-    final task = _task;
-    if (task == null) {
-      return;
-    }
+    final task = _vm.task;
+    if (task == null) return;
 
     final selection = await showModalBottomSheet<_ReminderSelection>(
       context: context,
@@ -876,224 +609,74 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       },
     );
 
-    if (!mounted || selection == null) {
-      return;
-    }
+    if (!mounted || selection == null) return;
 
-    if (_isNew) {
-      setState(() {
-        _task = _copyTask(
-          task,
-          setReminder: true,
-          reminderType: selection.type,
-          reminderMinutes: selection.minutes,
-        );
-      });
-      return;
-    }
-
-    await AppScope.of(
-      context,
-    ).tasks.setTaskReminder(task.id, selection.type, selection.minutes);
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _task = _copyTask(
-        task,
-        setReminder: true,
-        reminderType: selection.type,
-        reminderMinutes: selection.minutes,
-      );
-    });
+    await _vm.setReminder(selection.type, selection.minutes);
   }
 
   Future<void> _startTimerFromNote() async {
-    if (_isSaving) {
-      return;
-    }
-    final current = _task;
-    if (current == null) {
-      return;
-    }
+    if (_vm.isSaving) return;
+    
+    final current = _vm.task;
+    if (current == null) return;
+    
     if (current.isDone) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Задача уже выполнена.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Задача уже выполнена.')),
+        );
       }
       return;
     }
 
-    Task? task = current;
+    int? finalId = _vm.taskId;
     if (_isNew) {
-      final created = await _createTaskIfNeeded();
-      if (created == null) {
-        if (!mounted) {
-          return;
-        }
+      _vm.updateTitle(_titleController.text);
+      _vm.updateNote(_noteController.toStorage());
+      finalId = await _vm.saveDraft();
+      if (finalId == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Введите название заметки.')),
         );
         return;
       }
-      task = created;
     } else {
-      await _persistExistingEdits();
+      _vm.updateTitle(_titleController.text);
+      _vm.updateNote(_noteController.toStorage());
+      await _vm.save(); // Atomic save for existing task
     }
 
-    if (!mounted) {
-      return;
-    }
-    if (task.isDone) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Задача уже выполнена.')));
-      }
-      return;
-    }
+    if (!mounted) return;
 
     final services = AppScope.of(context);
-    services.timer.startForTask(task.id);
+    services.timer.startForTask(finalId!);
     services.navigation.setTab(1);
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   Future<void> _handleBack() async {
-    if (_isSaving) {
-      return;
-    }
-    _isSaving = true;
+    if (_vm.isSaving) return;
 
     try {
       if (_isNew) {
-        await _createTaskIfNeeded();
+        _vm.updateTitle(_titleController.text);
+        _vm.updateNote(_noteController.toStorage());
+        await _vm.saveDraft();
       } else {
-        await _persistExistingEdits();
+        _vm.updateTitle(_titleController.text);
+        _vm.updateNote(_noteController.toStorage());
+        await _vm.save(); // Perform full atomic save before popping
       }
       if (mounted) {
         Navigator.of(context).pop();
       }
-    } finally {
+    } catch (_) {
+      // In a real app, you might want to show an error or confirm exit without saving
       if (mounted) {
-        _isSaving = false;
+        Navigator.of(context).pop();
       }
     }
-  }
-
-  Future<void> _persistExistingEdits() async {
-    _titleTimer?.cancel();
-    _noteTimer?.cancel();
-
-    final task = _task;
-    if (task == null) {
-      return;
-    }
-
-    final repo = AppScope.of(context).tasks;
-    await repo.updateTaskTitle(task.id, _titleController.text.trim());
-    await repo.updateTaskNote(task.id, _noteController.toStorage());
-  }
-
-  Future<Task?> _createTaskIfNeeded() async {
-    _titleTimer?.cancel();
-    _noteTimer?.cancel();
-    final titleInput = _titleController.text.trim();
-    final noteStorage = _noteController.toStorage();
-    final notePlain = _noteController.toPlainText().trim();
-
-    // If neither title nor note provided, do nothing.
-    if (titleInput.isEmpty && notePlain.isEmpty) {
-      return null;
-    }
-
-    final repo = AppScope.of(context).tasks;
-
-    // If title is empty but note exists, generate a numbered "Без названия" title.
-    String title = titleInput;
-    if (title.isEmpty && notePlain.isNotEmpty) {
-      const base = 'Без названия';
-      final existing = await repo.fetchTasks(query: base);
-      var maxNum = 0;
-      final re = RegExp(r'^Без названия(?:\s(\d+))?$');
-      for (final t in existing) {
-        final m = re.firstMatch(t.title);
-        if (m != null) {
-          final g = m.group(1);
-          if (g == null) {
-            maxNum = max(maxNum, 1);
-          } else {
-            final n = int.tryParse(g) ?? 0;
-            maxNum = max(maxNum, n);
-          }
-        }
-      }
-      if (maxNum == 0) {
-        title = base;
-      } else {
-        title = '$base ${maxNum + 1}';
-      }
-    }
-
-    final created = await repo.addTask(title: title);
-
-    if (notePlain.isNotEmpty) {
-      await repo.updateTaskNote(created.id, noteStorage);
-    }
-
-    final task = _task;
-    if (task != null) {
-      if (task.isDone) {
-        await repo.setTaskDone(created.id, true);
-      }
-      if (task.isBurned) {
-        await repo.setTaskBurned(created.id, true);
-      }
-      if (task.categoryId != null) {
-        await repo.setTaskCategory(created.id, task.categoryId);
-      }
-      if (task.reminderType != null) {
-        await repo.setTaskReminder(
-          created.id,
-          task.reminderType,
-          task.reminderMinutes,
-        );
-      }
-    }
-
-    for (final item in _items) {
-      final text = item.text.trim();
-      if (text.isEmpty) {
-        continue;
-      }
-      final createdItem = await repo.addTaskItem(
-        taskId: created.id,
-        text: text,
-      );
-      if (item.isDone) {
-        await repo.setTaskItemDone(createdItem.id, true);
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _task = _copyTask(
-          created,
-          note: noteStorage,
-          isDone: _task?.isDone,
-          isBurned: _task?.isBurned,
-          setCategory: true,
-          categoryId: _task?.categoryId,
-          setReminder: true,
-          reminderType: _task?.reminderType,
-          reminderMinutes: _task?.reminderMinutes,
-        );
-      });
-    }
-    return created;
   }
 
   void _insertLinePrefix(String prefix) {
@@ -1132,14 +715,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDone = _task?.isDone ?? false;
+    final l10n = AppLocalizations.of(context)!;
+    final isDone = _vm.task?.isDone ?? false;
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
+        if (didPop) return;
         _handleBack();
       },
       child: Scaffold(
@@ -1151,7 +733,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             onPressed: _handleBack,
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
-          title: const Text('Заметка'),
+          title: Text(l10n.appNote),
           centerTitle: false,
           actions: [
             IconButton(
@@ -1164,18 +746,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           padding: const EdgeInsets.only(bottom: 8, right: 8),
           child: _buildFloatingActionButton(isDone),
         ),
-        body: _isLoading
+        body: _vm.isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _hasError || _task == null
+            : _vm.hasError || _vm.task == null
             ? _buildErrorState(theme)
-            : _buildContent(theme, _task!),
+            : _buildContent(theme, _vm.task!),
       ),
     );
   }
 
   Widget _buildContent(ThemeData theme, Task task) {
+    final l10n = AppLocalizations.of(context)!;
     Category? category;
-    for (final entry in _categories) {
+    for (final entry in _vm.categories) {
       if (entry.category.id == task.categoryId) {
         category = entry.category;
         break;
@@ -1198,10 +781,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 color: Colors.black87,
               ),
               // need to make hint color same as text color with some opacity to prevent weird jump when user starts typing
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: 'Название задачи',
-                hintStyle: TextStyle(
+                hintText: l10n.taskTitleHint,
+                hintStyle: const TextStyle(
                   color: Colors.black87,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1221,9 +804,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: const Color(0xFFF4B2B2)),
                     ),
-                    child: const Text(
-                      'Сгоревшая задача',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.taskBurnedStatus,
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppColors.error,
@@ -1234,7 +817,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   TextButton.icon(
                     onPressed: _resurrectTask,
                     icon: const Icon(Icons.auto_fix_high, size: 16),
-                    label: const Text('Воскресить'),
+                    label: Text(l10n.resurrect),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFFF5722),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
@@ -1262,7 +845,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     children: [
                       Flexible(
                         child: Text(
-                          category?.name ?? 'Категория',
+                          category?.name ?? l10n.category,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1420,21 +1003,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 height: 1.4,
                 color: Colors.black87,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: 'Дополнительные мысли можно записывать здесь...',
+                hintText: l10n.noteHint,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Чеклист',
+              l10n.checklist,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.mutedText,
               ),
             ),
             const SizedBox(height: 8),
-            for (final item in _items)
+            for (final item in _vm.items)
               _ChecklistTile(
                 item: item,
                 editable: _isEditing,
@@ -1450,7 +1033,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                       controller: _itemController,
                       onSubmitted: (_) => _addChecklistItem(),
                       decoration: InputDecoration(
-                        hintText: 'Добавить пункт',
+                        hintText: l10n.addChecklistItem,
                         filled: true,
                         fillColor: const Color(0xFFF3F5F4),
                         contentPadding: const EdgeInsets.symmetric(
@@ -1480,6 +1063,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   Widget _buildErrorState(ThemeData theme) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -1493,7 +1077,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Ошибка загрузки',
+                l10n.loadErrorTitle,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryDark,
@@ -1501,7 +1085,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Не удалось открыть заметку. Попробуйте еще раз.',
+                l10n.taskLoadError,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.mutedText,
                 ),
@@ -1509,13 +1093,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: _load,
+                onPressed: _vm.load,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
                   shape: const StadiumBorder(),
                 ),
-                child: const Text('Повторить попытку'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -1524,39 +1108,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     );
   }
 
-  Task _copyTask(
-    Task base, {
-    String? title,
-    String? note,
-    bool? isDone,
-    bool? isBurned,
-    bool? isHardcore,
-    int? categoryId,
-    bool setCategory = false,
-    ReminderType? reminderType,
-    int? reminderMinutes,
-    bool setReminder = false,
-  }) {
-    return base.copyWith(
-      title: title,
-      note: note,
-      isDone: isDone,
-      isBurned: isBurned,
-      isHardcore: isHardcore,
-      categoryId: categoryId,
-      setCategory: setCategory,
-      reminderType: reminderType,
-      reminderMinutes: reminderMinutes,
-      setReminder: setReminder,
-    );
-  }
-
   Widget _buildFloatingActionButton(bool isDone) {
     switch (_mode) {
       case _NoteScreenMode.editing:
         return FloatingActionButton(
           heroTag: 'fab_save',
-          onPressed: _isSaving
+          onPressed: _vm.isSaving
               ? null
               : () async {
                   await _leaveEditingMode();
@@ -1645,23 +1202,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   String _reminderLabel(Task task) {
+    final l10n = AppLocalizations.of(context)!;
     if (task.reminderType == null || task.reminderMinutes == null) {
-      return 'Напомнить';
+      return l10n.reminder;
     }
     return '${_reminderTypeLabel(task.reminderType!)} • '
         '${_formatMinutes(task.reminderMinutes!)}';
   }
 
   String _reminderTypeLabel(ReminderType type) {
+    final l10n = AppLocalizations.of(context)!;
     switch (type) {
       case ReminderType.once:
-        return 'Один раз';
+        return l10n.once;
       case ReminderType.daily:
-        return 'Каждый день';
+        return l10n.daily;
       case ReminderType.weekly:
-        return 'Каждую неделю';
+        return l10n.weekly;
       case ReminderType.custom:
-        return 'Настроить';
+        return l10n.custom;
     }
   }
 
@@ -1759,6 +1318,7 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1781,7 +1341,7 @@ class _CategoryTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '$count заметок',
+                  l10n.notesCount(count!),
                   style: const TextStyle(fontSize: 11),
                 ),
               ),

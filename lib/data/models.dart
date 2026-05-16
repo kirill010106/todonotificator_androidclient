@@ -27,6 +27,7 @@ class Task {
   final int? categoryId;
   final ReminderType? reminderType;
   final int? reminderMinutes;
+  final bool xpAwarded;
 
   const Task({
     required this.id,
@@ -39,6 +40,7 @@ class Task {
     this.categoryId,
     this.reminderType,
     this.reminderMinutes,
+    this.xpAwarded = false,
   });
 
   factory Task.fromMap(Map<String, Object?> map) {
@@ -55,6 +57,7 @@ class Task {
       categoryId: map['category_id'] as int?,
       reminderType: reminderTypeFromString(reminderValue),
       reminderMinutes: map['reminder_minutes'] as int?,
+      xpAwarded: (map['xp_awarded'] as int? ?? 0) == 1,
     );
   }
 
@@ -70,6 +73,7 @@ class Task {
     ReminderType? reminderType,
     int? reminderMinutes,
     bool setReminder = false,
+    bool? xpAwarded,
   }) {
     return Task(
       id: id,
@@ -82,6 +86,7 @@ class Task {
       categoryId: setCategory ? categoryId : this.categoryId,
       reminderType: setReminder ? reminderType : this.reminderType,
       reminderMinutes: setReminder ? reminderMinutes : this.reminderMinutes,
+      xpAwarded: xpAwarded ?? this.xpAwarded,
     );
   }
 }
@@ -107,6 +112,7 @@ class TaskItem {
   final String text;
   final bool isDone;
   final int position;
+  final bool xpAwarded;
 
   const TaskItem({
     required this.id,
@@ -114,6 +120,7 @@ class TaskItem {
     required this.text,
     required this.isDone,
     required this.position,
+    this.xpAwarded = false,
   });
 
   factory TaskItem.fromMap(Map<String, Object?> map) {
@@ -123,16 +130,24 @@ class TaskItem {
       text: map['text'] as String,
       isDone: (map['is_done'] as int) == 1,
       position: (map['position'] as int?) ?? 0,
+      xpAwarded: (map['xp_awarded'] as int? ?? 0) == 1,
     );
   }
 
-  TaskItem copyWith({int? taskId, String? text, bool? isDone, int? position}) {
+  TaskItem copyWith({
+    int? taskId,
+    String? text,
+    bool? isDone,
+    int? position,
+    bool? xpAwarded,
+  }) {
     return TaskItem(
       id: id,
       taskId: taskId ?? this.taskId,
       text: text ?? this.text,
       isDone: isDone ?? this.isDone,
       position: position ?? this.position,
+      xpAwarded: xpAwarded ?? this.xpAwarded,
     );
   }
 }

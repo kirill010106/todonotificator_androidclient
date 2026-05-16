@@ -1,0 +1,235 @@
+{
+  "appTitle": "ToDo Notificator",
+  "tabTasks": "Задачи",
+  "tabTimer": "Таймер",
+  "tabProfile": "Профиль",
+  "searchHint": "Поиск...",
+  "filterAll": "Все",
+  "filterNotDone": "Не сделано",
+  "filterDone": "Сделано",
+  "filterBurned": "Сгорело",
+  "allCategories": "Все категории",
+  "taskTitleHint": "Название задачи",
+  "noteHint": "Дополнительные мысли можно записывать здесь...",
+  "checklist": "Чеклист",
+  "addChecklistItem": "Добавить пункт",
+  "category": "Категория",
+  "reminder": "Напомнить",
+  "manageCategories": "Управление категориями",
+  "resurrect": "Воскресить",
+  "deleteTask": "Удалить заметку?",
+  "deleteConfirm": "Это действие нельзя отменить.",
+  "cancel": "Отмена",
+  "delete": "Удалить",
+  "save": "Сохранить",
+  "edit": "Изменить",
+  "done": "Готово",
+  "burned": "Сгорела",
+  "timerPenalty": "Штраф",
+  "timerFocus": "Фокус",
+  "timerRest": "Отдых",
+  "emptyTasks": "Готовы к новым свершениям?\nПервая задача самая важная!",
+  "loadErrorTitle": "Ошибка загрузки",
+  "retry": "Повторить попытку",
+  "taskHardcoreBonus": "Hardcore: x1.5 XP",
+  "taskResurrected": "Задача \"{title}\" воскрешена как Hardcore!",
+  "appNote": "Заметка",
+  "taskBurnedStatus": "Сгоревшая задача",
+  "addCategory": "+ Добавить",
+  "newCategory": "Новая категория",
+  "existingCategories": "Существующие",
+  "noCategory": "Без категории",
+  "selectCategory": "Выбор категории",
+  "addReminder": "Добавить напоминание",
+  "frequency": "Частота",
+  "time": "Время",
+  "noReminder": "Без напоминания",
+  "ready": "Готово",
+  "once": "Один раз",
+  "daily": "Каждый день",
+  "weekly": "Каждую неделю",
+  "custom": "Настроить",
+  "notesCount": "{count, plural, =0{нет заметок} =1{1 заметка} few{{count} заметки} other{{count} заметок}}",
+  "taskLoadError": "Не удалось открыть заметку. Попробуйте еще раз.",
+  "enterTitle": "Введите название заметки.",
+  "categoryNameHint": "Название",
+  "alreadyDone": "Задача уже выполнена.",
+  "sessionInterrupted": "Сессия прервана!",
+  "strictModeViolationDesc": "Вы нарушили \"Строгий режим\", свернув приложение более чем на 10 секунд. Текущая сессия аннулирована.",
+  "gotIt": "Понятно",
+  "didYouCompleteTask": "Вы выполнили задачу?",
+  "sessionFinishedDesc": "Сессия завершена. Отметьте прогресс для сохранения статистики.",
+  "yesIHandledIt": "Да, я справился!",
+  "noGiveUp": "Нет, сдаться",
+  "backToWork": "Вернуться к работе",
+  "dontGiveUp": "Не сдавайся, ты почти у цели!",
+  "penaltyDesc": "В случае сдачи вы получите штраф к очкам опыта. Осталось совсем немного до конца таймера.",
+  "surrenderAnyway": "Все равно сдаться",
+  "freeMode": "Свободный режим",
+  "noTitle": "Без названия",
+  "addNoteDescriptionHint": "Добавьте описание заметки...",
+  "completed": "Выполнено",
+  "pomodoroCount": "{count, plural, =0{нет Помодоро} =1{1 Помодоро} other{{count} Помодоро}}",
+  "@pomodoroCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "focus": "Фокус",
+  "cycleLabel": "Цикл {current}/{total}",
+  "@cycleLabel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cycleNextLabel": "Цикл {current}/{total} → Цикл {next}/{total}",
+  "@cycleNextLabel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "next": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "penaltyFocus": "Штрафной фокус",
+  "timeToRest": "Пора отдохнуть",
+  "timeToSeriousRest": "Пора серьезно отдохнуть",
+  "remainToFocus": "Осталось сфокусироваться!",
+  "freeFocusMode": "Свободный режим фокуса",
+  "debugMode": "Дебаг (сек вместо мин):",
+  "start": "Начать",
+  "pause": "Приостановить",
+  "finish": "Закончить",
+  "resume": "Продолжить",
+  "logoutConfirmTitle": "Подтверждение выхода",
+  "logoutConfirmDesc": "Действительно выйти из аккаунта?\nВы перейдете на экран входа",
+  "user": "Пользователь",
+  "levelLabel": "Уровень {level}  |  {xp} XP",
+  "@levelLabel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "xpToNextLevel": "{current} / {next} XP до ур. {level}",
+  "@xpToNextLevel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "next": {
+        "type": "int"
+      },
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "statStreak": "серия",
+  "statCompleted": "выполнено",
+  "statBurned": "сгорело",
+  "achievements": "Достижения",
+  "unlockedCount": "{unlocked} / {total} разблокировано",
+  "@unlockedCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyGoal": "Цель дня",
+  "intervals": "Интервалы",
+  "tasks": "Задачи",
+  "progress": "Прогресс",
+  "passed": "Пройдено",
+  "left": "Осталось",
+  "logout": "Выйти",
+  "settings": "Настройки",
+  "appSettings": "НАСТРОЙКИ ПРИЛОЖЕНИЯ",
+  "statusHeader": "СТАТУС",
+  "accountHeader": "АККАУНТ",
+  "notifications": "Уведомления",
+  "categories": "Категории",
+  "strictMode": "Строгий режим",
+  "strictModeDesc": "Штраф за сворачивание приложения",
+  "goal": "Цель",
+  "currentActivityDesc": "Ваша текущая активность",
+  "support": "Связь с поддержкой",
+  "changePassword": "Сменить пароль",
+  "deleteAccount": "Удалить аккаунт",
+  "versionLabel": "Версия: {version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "areYouSure": "Вы уверены?",
+  "deleteAccountDesc": "Вы действительно хотите удалить аккаунт?\nОтменить данное действие невозможно.\nПосле подтверждения вся сохраненная о Вас информация будет удалена с наших серверов.",
+  "deleteTimer": "Удалить ({seconds})",
+  "login": "Войти",
+  "register": "Регистрация",
+  "email": "Email",
+  "password": "Пароль",
+  "nickname": "Никнейм",
+  "welcomeBack": "С возвращением",
+  "createAccount": "Создать аккаунт",
+  "noAccount": "Нет аккаунта?",
+  "haveAccount": "Уже есть аккаунт?",
+  "graveyard": "Кладбище",
+  "noBurnedTasks": "Пока нет сгоревших задач",
+  "locked": "Заблокировано",
+  "unlocked": "Разблокировано",
+  "notificationSettings": "Настройки уведомлений",
+  "dailyReminder": "Ежедневное напоминание",
+  "sessionReminder": "Напоминание о сессии",
+  "saveChanges": "Сохранить изменения",
+  "error": "Ошибка",
+  "success": "Успех",
+  "language": "Язык",
+  "russian": "Русский",
+  "english": "English",
+  "noCategories": "Категорий пока нет",
+  "deleteCategory": "Удалить категорию?",
+  "migrateTo": "Или перенести в:",
+  "leaveCategoryless": "Оставить без категории",
+  "notesCountShort": "Заметок: {count}",
+  "@notesCountShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editCategory": "Редактировать",
+  "more": "Ещё...",
+  "choosePace": "Выберите темп",
+  "paceDescription": "Настройте фокус под свои задачи",
+  "paceEasyTitle": "ЛЕГКИЙ",
+  "paceEasyDesc": "Плавное погружение в работу",
+  "paceToneTitle": "В ТОНУСЕ",
+  "paceToneDesc": "Оптимальный баланс сил",
+  "paceRoastTitle": "ПРОЖАРКА",
+  "paceRoastDesc": "Максимальная концентрация",
+  "letsGo": "Погнали!"
+}

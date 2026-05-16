@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/models.dart';
 import '../data/repositories.dart';
 
 class SettingsViewModel extends ChangeNotifier {
@@ -14,52 +13,31 @@ class SettingsViewModel extends ChangeNotifier {
 
   bool _darkTheme = false;
   bool _strictMode = false;
+  String _languageCode = 'ru';
   String _targetTitle = 'В ТОНУСЕ';
   bool _isLoading = true;
 
   bool get darkTheme => _darkTheme;
   bool get strictMode => _strictMode;
+  String get languageCode => _languageCode;
   String get targetTitle => _targetTitle;
   bool get isLoading => _isLoading;
-
-  static const List<TargetOption> _options = [
-    TargetOption(
-      id: 'easy',
-      title: 'ЛЕГКИЙ',
-      subtitle: '',
-      tasks: 1,
-      intervals: 2,
-    ),
-    TargetOption(
-      id: 'tone',
-      title: 'В ТОНУСЕ',
-      subtitle: '',
-      tasks: 2,
-      intervals: 4,
-    ),
-    TargetOption(
-      id: 'burn',
-      title: 'ПРОЖАРКА',
-      subtitle: '',
-      tasks: 3,
-      intervals: 8,
-    ),
-  ];
 
   Future<void> load() async {
     _isLoading = true;
     notifyListeners();
 
-    final targetId = await _settingsRepository.getSelectedTarget();
-    if (targetId != null) {
-      final t = _options.firstWhere(
-        (o) => o.id == targetId,
-        orElse: () => _options[1],
-      );
-      _targetTitle = t.title;
-    }
-
     _strictMode = await _settingsRepository.isStrictModeEnabled();
+    _languageCode = await _settingsRepository.getLocale() ?? 'ru';
+
+    final targetId = await _settingsRepository.getSelectedTarget();
+    if (targetId == 'easy') {
+      _targetTitle = 'easy';
+    } else if (targetId == 'burn') {
+      _targetTitle = 'burn';
+    } else {
+      _targetTitle = 'tone';
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -73,6 +51,13 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> setStrictMode(bool value) async {
     _strictMode = value;
     await _settingsRepository.setStrictModeEnabled(value);
+    notifyListeners();
+  }
+
+  Future<void> setLanguage(String code) async {
+    if (_languageCode == code) return;
+    _languageCode = code;
+    await _settingsRepository.setLocale(code);
     notifyListeners();
   }
 

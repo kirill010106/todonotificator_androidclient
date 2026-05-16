@@ -1,12 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../../app/app_scope.dart';
-import '../../app/timer_controller.dart';
 import '../../data/models.dart';
-import '../../services/gamification_service.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../services/gamification_service.dart';
+import '../../view_models/profile_view_model.dart';
 import '../login_screen.dart';
 import '../graveyard_screen.dart';
 import '../settings_screen.dart';
@@ -20,123 +21,40 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  User? _user;
-  TargetOption? _target;
-  int _doneTasks = 0;
-  int _burnedTasks = 0;
-  bool _isLoading = true;
-  bool _showIntervals = true;
-  bool _didLoad = false;
-  TimerController? _timerController;
-  GamificationService? _gamification;
-
-  static const List<TargetOption> _options = [
-    TargetOption(
-      id: 'easy',
-      title: 'ЛЕГКИЙ',
-      subtitle: 'Цель дня на выбор',
-      tasks: 1,
-      intervals: 2,
-    ),
-    TargetOption(
-      id: 'tone',
-      title: 'В ТОНУСЕ',
-      subtitle: 'Цель дня на выбор',
-      tasks: 2,
-      intervals: 4,
-    ),
-    TargetOption(
-      id: 'burn',
-      title: 'ПРОЖАРКА',
-      subtitle: 'Цель дня на выбор',
-      tasks: 3,
-      intervals: 8,
-    ),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  ProfileViewModel? _vm;
+  bool _didInitVm = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_didLoad) {
-      _didLoad = true;
-      _loadData();
-    }
-    final timer = AppScope.of(context).timer;
-    if (_timerController != timer) {
-      _timerController?.removeListener(_onTimerChanged);
-      _timerController = timer;
-      _timerController?.addListener(_onTimerChanged);
-    }
-    final gamification = AppScope.of(context).gamification;
-    if (_gamification != gamification) {
-      _gamification?.removeListener(_onGamificationChanged);
-      _gamification = gamification;
-      _gamification?.addListener(_onGamificationChanged);
+    if (!_didInitVm) {
+      _didInitVm = true;
+      final scope = AppScope.of(context);
+      _vm = ProfileViewModel(
+        authRepository: scope.auth,
+        settingsRepository: scope.settings,
+        taskRepository: scope.tasks,
+        timerController: scope.timer,
+        gamificationService: scope.gamification,
+      );
+      _vm!.addListener(_onVmChanged);
+      _vm!.load();
     }
   }
 
   @override
   void dispose() {
-    _timerController?.removeListener(_onTimerChanged);
-    _gamification?.removeListener(_onGamificationChanged);
+    _vm?.removeListener(_onVmChanged);
+    _vm?.dispose();
     super.dispose();
   }
 
-  void _onTimerChanged() {
+  void _onVmChanged() {
     if (mounted) setState(() {});
   }
 
-  void _onGamificationChanged() {
-    if (!mounted) return;
-    setState(() {});
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final scope = AppScope.of(context);
-      final user = await scope.auth.getCurrentUser();
-      final targetId = await scope.settings.getSelectedTarget();
-      TargetOption? target;
-      if (targetId != null) {
-        target = _options.firstWhere(
-          (o) => o.id == targetId,
-          orElse: () => _options[1],
-        );
-      }
-
-      final tasks = await scope.tasks.fetchTasks();
-      int doneCount = 0;
-      int burnedCount = 0;
-      for (final t in tasks) {
-        if (t.isDone) {
-          doneCount++;
-        } else if (t.isBurned) {
-          burnedCount++;
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _user = user;
-        _target = target ?? _options[1];
-        _doneTasks = doneCount;
-        _burnedTasks = burnedCount;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -146,14 +64,14 @@ class _ProfileTabState extends State<ProfileTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Подтверждение выхода',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              Text(
+                l10n.logoutConfirmTitle,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'Действительно выйти из аккаунта?\nВы перейдете на экран входа',
+                l10n.logoutConfirmDesc,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.mutedText,
                   height: 1.4,
@@ -169,9 +87,9 @@ class _ProfileTabState extends State<ProfileTab> {
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primaryDark,
                       ),
-                      child: const Text(
-                        'Отменить',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        l10n.cancel,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -186,9 +104,9 @@ class _ProfileTabState extends State<ProfileTab> {
                         shape: const StadiumBorder(),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text(
-                        'Выйти',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        l10n.logout,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -202,8 +120,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
     if (confirmed != true) return;
 
-    if (!mounted) return;
-    await AppScope.of(context).auth.logout();
+    await _vm?.logout();
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -216,20 +133,22 @@ class _ProfileTabState extends State<ProfileTab> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-    _loadData();
+    _vm?.load();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    final vm = _vm;
+    if (vm == null || vm.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final nickname = _user?.nickname ?? 'Пользователь';
-    final progress = _gamification?.progress;
-    final level = progress?.level ?? 1;
-    final streak = progress?.streakDays ?? 0;
+    final nickname = vm.user?.nickname ?? l10n.user;
+    final progress = vm.progress;
+    final level = progress.level;
+    final streak = progress.streakDays;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -239,9 +158,9 @@ class _ProfileTabState extends State<ProfileTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Профиль',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                Text(
+                  l10n.tabProfile,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
                 ),
                 Row(
                   children: [
@@ -285,7 +204,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                'Уровень $level  |  ${progress?.totalXp ?? 0} XP',
+                l10n.levelLabel(level, progress.totalXp),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -295,13 +214,13 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             const SizedBox(height: 12),
             // XP progress bar
-            if (progress != null) _buildXpBar(progress),
+            _buildXpBar(l10n, progress),
             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: _buildStatBox(
-                    'серия',
+                    l10n.statStreak,
                     streak.toString(),
                     Icons.local_fire_department,
                     streak > 0 ? const Color(0xFFFF7043) : AppColors.mutedText,
@@ -310,8 +229,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildStatBox(
-                    'выполнено',
-                    _doneTasks.toString(),
+                    l10n.statCompleted,
+                    vm.doneTasks.toString(),
                     Icons.check_circle_outline,
                     AppColors.primaryDark,
                   ),
@@ -323,11 +242,11 @@ class _ProfileTabState extends State<ProfileTab> {
                       await Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const GraveyardScreen()),
                       );
-                      _loadData(); // Refresh counts when returning
+                      vm.load(); // Refresh counts when returning
                     },
                     child: _buildStatBox(
-                      'сгорело',
-                      _burnedTasks.toString(),
+                      l10n.statBurned,
+                      vm.burnedTasks.toString(),
                       Icons.cancel_outlined,
                       AppColors.error,
                     ),
@@ -337,23 +256,23 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             const SizedBox(height: 12),
             // Achievements button
-            _buildAchievementsButton(),
+            _buildAchievementsButton(l10n),
             const SizedBox(height: 20),
-            _buildGoalCard(theme),
+            _buildGoalCard(l10n, theme, vm),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildXpBar(UserProgress progress) {
+  Widget _buildXpBar(AppLocalizations l10n, UserProgress progress) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${progress.xpInCurrentLevel} / ${progress.xpForNextLevel} XP до ур. ${progress.level + 1}',
+              l10n.xpToNextLevel(progress.xpInCurrentLevel, progress.xpForNextLevel, progress.level + 1),
               style: const TextStyle(fontSize: 11, color: AppColors.mutedText),
             ),
             Text(
@@ -385,9 +304,8 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  Widget _buildAchievementsButton() {
-    final g = _gamification;
-    final unlocked = g?.unlockedCount ?? 0;
+  Widget _buildAchievementsButton(AppLocalizations l10n) {
+    final unlocked = AppScope.of(context).gamification.unlockedCount;
     final total = GamificationService.catalogue.length;
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -408,16 +326,16 @@ class _ProfileTabState extends State<ProfileTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Достижения',
-                    style: TextStyle(
+                  Text(
+                    l10n.achievements,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryDark,
                     ),
                   ),
                   Text(
-                    '$unlocked / $total разблокировано',
+                    l10n.unlockedCount(unlocked, total),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.mutedText,
@@ -470,25 +388,24 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  Widget _buildGoalCard(ThemeData theme) {
-    final timer = AppScope.of(context).timer;
-    final int targetTasks = _target?.tasks ?? 1;
-    final int targetIntervals = _target?.intervals ?? 2;
+  Widget _buildGoalCard(AppLocalizations l10n, ThemeData theme, ProfileViewModel vm) {
+    final int targetTasks = vm.target?.tasks ?? 1;
+    final int targetIntervals = vm.target?.intervals ?? 2;
 
     int passed = 0;
     int targetVal = 1;
 
-    if (_showIntervals) {
-      passed = timer.completedPomodoros;
+    if (vm.showIntervals) {
+      passed = vm.completedPomodoros;
       targetVal = targetIntervals;
     } else {
-      passed = _doneTasks;
+      passed = vm.doneTasks;
       targetVal = targetTasks;
     }
 
     final int remaining = max(0, targetVal - passed);
-    final double progress = targetVal == 0 ? 0 : min(1.0, passed / targetVal);
-    final int percent = (progress * 100).round();
+    final double progressFraction = targetVal == 0 ? 0 : min(1.0, passed / targetVal);
+    final int percent = (progressFraction * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -502,9 +419,9 @@ class _ProfileTabState extends State<ProfileTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Цель дня',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              Text(
+                l10n.dailyGoal,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               Container(
                 decoration: BoxDecoration(
@@ -513,11 +430,11 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 child: Row(
                   children: [
-                    _buildToggleBtn('Интервалы', _showIntervals, () {
-                      setState(() => _showIntervals = true);
+                    _buildToggleBtn(l10n.intervals, vm.showIntervals, () {
+                      vm.setShowIntervals(true);
                     }),
-                    _buildToggleBtn('Задачи', !_showIntervals, () {
-                      setState(() => _showIntervals = false);
+                    _buildToggleBtn(l10n.tasks, !vm.showIntervals, () {
+                      vm.setShowIntervals(false);
                     }),
                   ],
                 ),
@@ -532,7 +449,7 @@ class _ProfileTabState extends State<ProfileTab> {
               fit: StackFit.expand,
               children: [
                 CircularProgressIndicator(
-                  value: progress,
+                  value: progressFraction,
                   strokeWidth: 16,
                   backgroundColor: const Color(0xFFF0F4F2),
                   color: AppColors.primaryDark,
@@ -548,9 +465,9 @@ class _ProfileTabState extends State<ProfileTab> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const Text(
-                        'Прогресс',
-                        style: TextStyle(
+                      Text(
+                        l10n.progress,
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.mutedText,
                         ),
@@ -562,11 +479,11 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
           ),
           const SizedBox(height: 32),
-          _buildGoalRow(AppColors.primaryDark, 'Пройдено', passed.toString()),
+          _buildGoalRow(AppColors.primaryDark, l10n.passed, passed.toString()),
           const SizedBox(height: 12),
           _buildGoalRow(
             const Color(0xFFE1E6E2),
-            'Осталось',
+            l10n.left,
             remaining.toString(),
           ),
         ],
@@ -629,3 +546,4 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 }
+

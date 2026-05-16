@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../data/models.dart';
@@ -40,6 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
+    final l10n = AppLocalizations.of(context)!;
 
     final nickname = _nicknameController.text.trim();
     final email = _emailController.text.trim();
@@ -53,26 +55,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? policyError;
 
     if (nickname.isEmpty) {
-      nicknameError = 'Введите никнейм';
+      nicknameError = l10n.nickname;
     } else if (nickname.length < 3) {
-      nicknameError = 'Минимум 3 символа';
+      nicknameError = l10n.error;
     }
 
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (email.isEmpty) {
-      emailError = 'Введите email';
+      emailError = l10n.email;
     } else if (!emailRegex.hasMatch(email)) {
-      emailError = 'Введите корректный email';
+      emailError = l10n.error;
     }
 
     if (password.length < 8) {
-      passwordError = 'Пароль должен быть не менее 8 символов';
+      passwordError = l10n.error;
     }
     if (confirm != password) {
-      confirmError = 'Пароли не совпадают';
+      confirmError = l10n.error;
     }
     if (!_accepted) {
-      policyError = 'Подтвердите соглашение';
+      policyError = l10n.error;
     }
 
     setState(() {
@@ -119,16 +121,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       switch (result.failure) {
         case AuthFailure.emailExists:
-          _emailError = 'Такой аккаунт уже зарегистрирован';
+          _emailError = l10n.error;
           break;
         case AuthFailure.nicknameExists:
-          _nicknameError = 'Никнейм уже занят';
+          _nicknameError = l10n.error;
           break;
         case AuthFailure.serverError:
         default:
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка сервера. Попробуйте позже'),
+            SnackBar(
+              content: Text(l10n.error),
             ),
           );
       }
@@ -137,6 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -152,27 +155,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   const SizedBox(height: 32),
                   Text(
-                    'Помодоро ТуДу',
+                    l10n.appTitle,
                     style: theme.textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Зарегистрируйтесь, чтобы начать!',
+                    l10n.createAccount,
                     style: theme.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
                   AppTextField(
                     controller: _nicknameController,
-                    hintText: 'Никнейм',
+                    hintText: l10n.nickname,
                     errorText: _nicknameError,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 14),
                   AppTextField(
                     controller: _emailController,
-                    hintText: 'Email',
+                    hintText: l10n.email,
                     errorText: _emailError,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
@@ -181,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 14),
                   AppTextField(
                     controller: _passwordController,
-                    hintText: 'Пароль',
+                    hintText: l10n.password,
                     errorText: _passwordError,
                     obscureText: true,
                     textInputAction: TextInputAction.next,
@@ -190,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 14),
                   AppTextField(
                     controller: _confirmController,
-                    hintText: 'Повторите пароль',
+                    hintText: l10n.password,
                     errorText: _confirmError,
                     obscureText: true,
                     textInputAction: TextInputAction.done,
@@ -226,17 +229,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               height: 1.35,
                             ),
                             children: [
-                              const TextSpan(text: 'Я согласен с '),
+                              TextSpan(text: '${l10n.done} '),
                               TextSpan(
-                                text: 'Пользовательским соглашением',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const TextSpan(text: ' и '),
-                              TextSpan(
-                                text: 'Политикой конфиденциальности',
+                                text: l10n.appTitle,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
@@ -277,9 +272,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text(
-                            'Регистрация',
-                            style: TextStyle(
+                        : Text(
+                            l10n.register,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -290,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Уже зарегистрированы?',
+                        l10n.haveAccount,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.mutedText,
                         ),
@@ -305,7 +300,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           );
                         },
                         child: Text(
-                          'Войти',
+                          l10n.login,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
@@ -322,5 +317,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+
   }
 }

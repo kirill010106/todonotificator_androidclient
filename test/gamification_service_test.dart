@@ -52,7 +52,6 @@ void main() {
 
   group('recordEvent', () {
     test('adds XP and updates streak', () async {
-      final initialProgress = UserProgress.fromTotalXp(0);
       final updatedProgress = UserProgress.fromTotalXp(10);
       
       when(() => mockRepo.addXp(userId, 10)).thenAnswer((_) async => updatedProgress);

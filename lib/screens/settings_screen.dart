@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 import '../app/app_scope.dart';
 import '../ui/theme/app_colors.dart';
 import '../view_models/settings_view_model.dart';
@@ -7,6 +8,7 @@ import 'change_password_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'target_select_screen.dart';
+import 'category_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -45,6 +47,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _showLanguageSheet(BuildContext context, SettingsViewModel vm) async {
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.of(context);
+
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(l10n.russian),
+                trailing: vm.languageCode == 'ru'
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  vm.setLanguage('ru');
+                  services.locale.setLocale(const Locale('ru'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text(l10n.english),
+                trailing: vm.languageCode == 'en'
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  vm.setLanguage('en');
+                  services.locale.setLocale(const Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _deleteAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -65,6 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final vm = _viewModel;
     if (vm == null || vm.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -79,9 +126,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Настройки',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        title: Text(
+          l10n.settings,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: SafeArea(
@@ -96,11 +143,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildSectionHeader('НАСТРОЙКИ ПРИЛОЖЕНИЯ'),
+                    _buildSectionHeader(l10n.appSettings),
                     _buildContainer([
                       _buildListTile(
                         icon: Icons.notifications_none,
-                        title: 'Уведомления',
+                        title: l10n.notifications,
                         trailing: const Icon(
                           Icons.chevron_right,
                           color: AppColors.mutedText,
@@ -115,9 +162,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const Divider(height: 1, indent: 48),
                       _buildListTile(
+                        icon: Icons.bookmarks_outlined,
+                        title: l10n.categories,
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.mutedText,
+                        ),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CategoryManagementScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 48),
+                      _buildListTile(
+                        icon: Icons.language,
+                        title: l10n.language,
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F3EE),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            vm.languageCode == 'ru'
+                                ? l10n.russian.toUpperCase()
+                                : l10n.english.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ),
+                        onTap: () => _showLanguageSheet(context, vm),
+                      ),
+                      const Divider(height: 1, indent: 48),
+                      _buildListTile(
                         icon: Icons.timer_outlined,
-                        title: 'Строгий режим',
-                        subtitle: 'Штраф за сворачивание приложения',
+                        title: l10n.strictMode,
+                        subtitle: l10n.strictModeDesc,
                         trailing: Switch(
                           value: vm.strictMode,
                           onChanged: (val) => vm.setStrictMode(val),
@@ -126,11 +215,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ]),
                     const SizedBox(height: 24),
-                    _buildSectionHeader('СТАТУС'),
+                    _buildSectionHeader(l10n.statusHeader),
                     _buildContainer([
                       _buildListTile(
-                        title: 'Цель',
-                        subtitle: 'Ваша текущая активность',
+                        title: l10n.goal,
+                        subtitle: l10n.currentActivityDesc,
                         onTap: () async {
                           final targetId = await vm.getSelectedTargetId();
                           if (!context.mounted) return;
@@ -154,7 +243,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            vm.targetTitle.toUpperCase(),
+                            (vm.targetTitle == 'easy'
+                                    ? l10n.paceEasyTitle
+                                    : vm.targetTitle == 'burn'
+                                        ? l10n.paceRoastTitle
+                                        : l10n.paceToneTitle)
+                                .toUpperCase(),
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -165,11 +259,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ]),
                     const SizedBox(height: 24),
-                    _buildSectionHeader('АККАУНТ'),
+                    _buildSectionHeader(l10n.accountHeader),
                     _buildContainer([
                       _buildListTile(
                         icon: Icons.support_agent_outlined,
-                        title: 'Связь с поддержкой',
+                        title: l10n.support,
                         trailing: const Icon(
                           Icons.chevron_right,
                           color: AppColors.mutedText,
@@ -179,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const Divider(height: 1, indent: 48),
                       _buildListTile(
                         icon: Icons.lock_outline,
-                        title: 'Сменить пароль',
+                        title: l10n.changePassword,
                         trailing: const Icon(
                           Icons.chevron_right,
                           color: AppColors.mutedText,
@@ -196,7 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildListTile(
                         icon: Icons.delete_outline,
                         iconColor: AppColors.error,
-                        title: 'Удалить аккаунт',
+                        title: l10n.deleteAccount,
                         titleColor: AppColors.error,
                         onTap: _deleteAccount,
                       ),
@@ -205,11 +299,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 24),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
               child: Text(
-                'Версия: 1.0.0',
-                style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                l10n.versionLabel('1.0.0'),
+                style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
               ),
             ),
           ],
@@ -299,6 +393,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
@@ -307,13 +402,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Вы уверены?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            Text(
+              l10n.areYouSure,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             Text(
-              'Вы действительно хотите удалить аккаунт?\nОтменить данное действие невозможно.\nПосле подтверждения вся сохраненная о Вас информация будет удалена с наших серверов.',
+              l10n.deleteAccountDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.mutedText,
                 height: 1.4,
@@ -328,9 +423,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primaryDark,
                   ),
-                  child: const Text(
-                    'Отменить',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  child: Text(
+                    l10n.cancel,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -343,7 +438,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                     disabledForegroundColor: AppColors.mutedText,
                   ),
                   child: Text(
-                    _seconds > 0 ? 'Удалить ($_seconds)' : 'Удалить',
+                    _seconds > 0 ? l10n.deleteTimer(_seconds) : l10n.delete,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),

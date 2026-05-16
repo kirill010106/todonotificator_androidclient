@@ -9,31 +9,45 @@ class TasksViewModel extends ChangeNotifier {
 
   List<Task> _tasks = const [];
   Map<int, Category> _categories = const {};
+  List<CategoryStats> _categoryStats = const [];
   bool _isLoading = false;
   String? _errorMessage;
   TaskFilter _filter = TaskFilter.all;
+  int? _selectedCategoryId;
   String _searchQuery = '';
 
   List<Task> get tasks => _tasks;
   Map<int, Category> get categories => _categories;
+  List<CategoryStats> get categoryStats => _categoryStats;
   bool get isLoading => _isLoading;
   bool get hasError => _errorMessage != null;
   String? get errorMessage => _errorMessage;
   TaskFilter get filter => _filter;
+  int? get selectedCategoryId => _selectedCategoryId;
   String get searchQuery => _searchQuery;
 
-  Future<void> loadTasks() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> loadTasks({bool isInitial = false}) async {
+    if (isInitial) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
-      final tasksResult = await _repository.fetchTasks(
+      var tasksResult = await _repository.fetchTasks(
         filter: _filter,
         query: _searchQuery.isEmpty ? null : _searchQuery,
       );
+
+      if (_selectedCategoryId != null) {
+        tasksResult = tasksResult
+            .where((t) => t.categoryId == _selectedCategoryId)
+            .toList();
+      }
+
       final categoriesResult = await _repository.fetchCategories();
 
+      _categoryStats = categoriesResult;
       _categories = {
         for (final stat in categoriesResult) stat.category.id: stat.category,
       };
@@ -41,7 +55,9 @@ class TasksViewModel extends ChangeNotifier {
       _isLoading = false;
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Не удалось загрузить задачи.';
+      if (isInitial) {
+        _errorMessage = 'Не удалось загрузить задачи.';
+      }
     }
     notifyListeners();
   }
@@ -49,6 +65,12 @@ class TasksViewModel extends ChangeNotifier {
   void setFilter(TaskFilter filter) {
     if (_filter == filter) return;
     _filter = filter;
+    loadTasks();
+  }
+
+  void setSelectedCategoryId(int? categoryId) {
+    if (_selectedCategoryId == categoryId) return;
+    _selectedCategoryId = categoryId;
     loadTasks();
   }
 
@@ -64,6 +86,16 @@ class TasksViewModel extends ChangeNotifier {
       await loadTasks();
     } catch (e) {
       _errorMessage = 'Не удалось обновить статус задачи.';
+      notifyListeners();
+    }
+  }
+
+  Future<void> resurrectTask(int id) async {
+    try {
+      await _repository.resurrectTask(id);
+      await loadTasks();
+    } catch (e) {
+      _errorMessage = 'Не удалось воскресить задачу.';
       notifyListeners();
     }
   }

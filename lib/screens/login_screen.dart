@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import '../data/models.dart';
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
+    final l10n = AppLocalizations.of(context)!;
 
     final login = _loginController.text.trim();
     final password = _passwordController.text;
@@ -41,10 +43,10 @@ class _LoginScreenState extends State<LoginScreen> {
     String? passwordError;
 
     if (login.isEmpty) {
-      loginError = 'Введите email или никнейм';
+      loginError = l10n.email;
     }
     if (password.isEmpty) {
-      passwordError = 'Введите пароль';
+      passwordError = l10n.password;
     }
 
     setState(() {
@@ -90,24 +92,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() {
-      _bannerMessage = _mapFailure(result.failure);
+      _bannerMessage = _mapFailure(result.failure, l10n);
     });
   }
 
-  String _mapFailure(AuthFailure? failure) {
+  String _mapFailure(AuthFailure? failure, AppLocalizations l10n) {
     switch (failure) {
       case AuthFailure.invalidCredentials:
-        return 'Неверный логин или пароль';
+        return l10n.error;
       case AuthFailure.serverError:
-        return 'Ошибка сервера. Попробуйте позже';
+        return l10n.error;
       default:
-        return 'Что-то пошло не так';
+        return l10n.error;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -126,20 +129,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                   const SizedBox(height: 24),
                   Text(
-                    'Помодоро ТуДу',
+                    l10n.appTitle,
                     style: theme.textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Войдите, чтобы продолжить',
+                    l10n.welcomeBack,
                     style: theme.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
                   AppTextField(
                     controller: _loginController,
-                    hintText: 'Email / Никнейм',
+                    hintText: '${l10n.email} / ${l10n.nickname}',
                     errorText: _loginError,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
@@ -148,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 14),
                   AppTextField(
                     controller: _passwordController,
-                    hintText: 'Пароль',
+                    hintText: l10n.password,
                     errorText: _passwordError,
                     obscureText: true,
                     textInputAction: TextInputAction.done,
@@ -174,9 +177,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text(
-                            'Войти',
-                            style: TextStyle(
+                        : Text(
+                            l10n.login,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -187,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Нет аккаунта?',
+                        l10n.noAccount,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.mutedText,
                         ),
@@ -202,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: Text(
-                          'Зарегистрироваться',
+                          l10n.register,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,

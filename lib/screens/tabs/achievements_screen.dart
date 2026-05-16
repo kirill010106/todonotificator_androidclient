@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../../app/app_scope.dart';
 import '../../data/models.dart';
@@ -41,6 +42,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     final achievements = _gamification.achievements;
     final unlockedCount = _gamification.unlockedCount;
     final total = achievements.length;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,9 +54,9 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           color: AppColors.primaryDark,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Достижения',
-          style: TextStyle(
+        title: Text(
+          l10n.achievements,
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: AppColors.primaryDark,
@@ -82,7 +84,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Разблокировано: $unlockedCount / $total',
+                          l10n.unlockedCount(unlockedCount, total),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -291,6 +293,7 @@ class _AchievementUnlockBannerState extends State<_AchievementUnlockBanner>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Positioned(
       top: MediaQuery.of(context).padding.top + 16,
       left: 16,
@@ -325,9 +328,9 @@ class _AchievementUnlockBannerState extends State<_AchievementUnlockBanner>
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Достижение открыто!',
-                          style: TextStyle(
+                        Text(
+                          l10n.unlocked,
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

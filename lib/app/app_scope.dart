@@ -7,6 +7,30 @@ import '../services/audio_service.dart';
 import 'navigation_state.dart';
 import 'timer_controller.dart';
 
+class LocaleController extends ChangeNotifier {
+  LocaleController(this._repository);
+
+  final SettingsRepository _repository;
+  Locale _locale = const Locale('ru');
+
+  Locale get locale => _locale;
+
+  Future<void> load() async {
+    final languageCode = await _repository.getLocale();
+    if (languageCode != null) {
+      _locale = Locale(languageCode);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    if (_locale == locale) return;
+    _locale = locale;
+    await _repository.setLocale(locale.languageCode);
+    notifyListeners();
+  }
+}
+
 class AppServices {
   const AppServices({
     required this.auth,
@@ -18,6 +42,7 @@ class AppServices {
     required this.gamification,
     required this.gamificationRepository,
     required this.audio,
+    required this.locale,
   });
 
   final AuthRepository auth;
@@ -29,6 +54,7 @@ class AppServices {
   final GamificationService gamification;
   final GamificationRepository gamificationRepository;
   final AudioService audio;
+  final LocaleController locale;
 }
 
 class AppScope extends InheritedWidget {
@@ -42,8 +68,10 @@ class AppScope extends InheritedWidget {
 
   static AppServices of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
-    assert(scope != null, 'AppScope not found in widget tree');
-    return scope!.services;
+    if (scope == null) {
+      throw FlutterError('AppScope not found in widget tree');
+    }
+    return scope.services;
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repositories.dart';
@@ -206,41 +207,89 @@ class TaskDetailViewModel extends ChangeNotifier {
     }
   }
 
-  Future<int?> saveDraft() async {
-    if (!isNew || _task == null) return null;
+  /// Cancels any pending autosave timers and performs an immediate save of all fields.
+  /// Uses [saveTaskFull] to ensure the operation is atomic.
+  Future<void> save() async {
+    if (_task == null) return;
+    
+    _titleTimer?.cancel();
+    _noteTimer?.cancel();
 
     _isSaving = true;
     notifyListeners();
 
     try {
-      final created = await _repository.addTask(title: _task!.title);
-      if (_task!.note != null && _task!.note!.isNotEmpty) {
-        await _repository.updateTaskNote(created.id, _task!.note!);
-      }
-      if (_task!.categoryId != null) {
-        await _repository.setTaskCategory(created.id, _task!.categoryId);
-      }
-      if (_task!.reminderType != null) {
-        await _repository.setTaskReminder(
-          created.id,
-          _task!.reminderType,
-          _task!.reminderMinutes,
-        );
-      }
-      if (_task!.isDone) {
-        await _repository.setTaskDone(created.id, true);
-      }
+      await _repository.saveTaskFull(
+        id: isNew ? null : taskId,
+        title: _task!.title,
+        note: _task!.note,
+        categoryId: _task!.categoryId,
+        reminderType: _task!.reminderType,
+        reminderMinutes: _task!.reminderMinutes,
+        isDone: _task!.isDone,
+        isBurned: _task!.isBurned,
+        isHardcore: _task!.isHardcore,
+        items: _items,
+      );
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
 
-      for (final item in _items) {
-        final createdItem = await _repository.addTaskItem(
-          taskId: created.id,
-          text: item.text,
-        );
-        if (item.isDone) {
-          await _repository.setTaskItemDone(createdItem.id, true);
+  Future<int?> saveDraft() async {
+    if (!isNew || _task == null) return null;
+
+    final notePlain = extractPlainNote(_task!.note).trim();
+    final titleInput = _task!.title.trim();
+
+    if (titleInput.isEmpty && notePlain.isEmpty && _items.isEmpty) {
+      return null;
+    }
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      // If title is empty but content exists, generate a numbered "Без названия" title.
+      String title = titleInput;
+      if (title.isEmpty) {
+        const base = 'Без названия';
+        final existing = await _repository.fetchTasks(query: base);
+        var maxNum = 0;
+        final re = RegExp(r'^Без названия(?:\s(\d+))?$');
+        for (final t in existing) {
+          final m = re.firstMatch(t.title);
+          if (m != null) {
+            final g = m.group(1);
+            if (g == null) {
+              maxNum = max(maxNum, 1);
+            } else {
+              final n = int.tryParse(g) ?? 0;
+              maxNum = max(maxNum, n);
+            }
+          }
+        }
+        if (maxNum == 0) {
+          title = base;
+        } else {
+          title = '$base ${maxNum + 1}';
         }
       }
-      return created.id;
+
+      final createdId = await _repository.saveTaskFull(
+        title: title,
+        note: _task!.note,
+        categoryId: _task!.categoryId,
+        reminderType: _task!.reminderType,
+        reminderMinutes: _task!.reminderMinutes,
+        isDone: _task!.isDone,
+        isBurned: _task!.isBurned,
+        isHardcore: _task!.isHardcore,
+        items: _items,
+      );
+      
+      return createdId;
     } finally {
       _isSaving = false;
       notifyListeners();

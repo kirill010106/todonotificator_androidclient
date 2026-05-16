@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
 
 import '../../app/app_scope.dart';
 import '../../data/models.dart';
-import '../../data/repositories.dart';
 import '../../services/audio_service.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../view_models/tasks_view_model.dart';
 import '../task_detail_screen.dart';
 
 class TasksTab extends StatefulWidget {
@@ -17,92 +18,51 @@ class TasksTab extends StatefulWidget {
 class TasksTabState extends State<TasksTab> {
   final _searchController = TextEditingController();
 
-  TaskFilter _filter = TaskFilter.all;
-  List<Task> _tasks = const [];
-  Map<int, Category> _categories = const {};
-  bool _isLoading = true;
-  bool _didLoad = false;
-  bool _hasError = false;
-  String? _errorMessage;
-
-  late TaskRepository _repo;
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  TasksViewModel? _vm;
+  bool _didInitVm = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _repo = AppScope.of(context).tasks;
-    if (!_didLoad) {
-      _didLoad = true;
-      _loadTasks();
+    if (!_didInitVm) {
+      _didInitVm = true;
+      _vm = TasksViewModel(AppScope.of(context).tasks);
+      _vm!.addListener(_onVmChanged);
+      _vm!.loadTasks(isInitial: true);
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _vm?.removeListener(_onVmChanged);
     super.dispose();
   }
 
-  Future<void> _loadTasks() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-      _errorMessage = null;
-    });
-
-    try {
-      final query = _searchController.text;
-      final filter = _filter;
-      
-      final tasksResult = await _repo.fetchTasks(
-        filter: filter,
-        query: query,
-      );
-      final categoriesResult = await _repo.fetchCategories();
-
-      if (!mounted) {
-        return;
-      }
-
-      final categoryMap = {
-        for (final stat in categoriesResult) stat.category.id: stat.category,
-      };
-
-      setState(() {
-        _tasks = tasksResult;
-        _categories = categoryMap;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = 'Не удалось загрузить задачи.';
-      });
-    }
+  void _onVmChanged() {
+    if (mounted) setState(() {});
   }
 
-  Future<void> reloadTasks() => _loadTasks();
+  Future<void> reloadTasks() async {
+    await _vm?.loadTasks();
+  }
 
   Future<void> openAddTask() async {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const TaskDetailScreen()));
-    await _loadTasks();
+    await _vm?.loadTasks();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final vm = _vm;
+
+    if (vm == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return SafeArea(
       child: Column(
@@ -111,9 +71,9 @@ class TasksTabState extends State<TasksTab> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               controller: _searchController,
-              onChanged: (_) => _loadTasks(),
+              onChanged: (value) => vm.setSearchQuery(value),
               decoration: InputDecoration(
-                hintText: 'Поиск...',
+                hintText: l10n.searchHint,
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: const Color(0xFFE6EAE7),
@@ -125,36 +85,71 @@ class TasksTabState extends State<TasksTab> {
               ),
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _buildFilterChip('Все', TaskFilter.all),
-                const SizedBox(width: 8),
-                _buildFilterChip('Не сделано', TaskFilter.active),
-                const SizedBox(width: 8),
-                _buildFilterChip('Сделано', TaskFilter.completed),
-                const SizedBox(width: 8),
-                _buildFilterChip('Сгорело', TaskFilter.burned),
-              ],
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE1E6E2)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      _buildFilterChip(l10n.filterAll, TaskFilter.all),
+                      const SizedBox(width: 4),
+                      _buildFilterChip(l10n.filterNotDone, TaskFilter.active),
+                      const SizedBox(width: 4),
+                      _buildFilterChip(l10n.filterDone, TaskFilter.completed),
+                      const SizedBox(width: 4),
+                      _buildFilterChip(l10n.filterBurned, TaskFilter.burned),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
+          if (vm.categories.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4F1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: _buildHybridCategoryChips(l10n, vm),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Expanded(
-            child: _isLoading
+            child: vm.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _hasError
-                ? _buildErrorState(theme)
-                : _tasks.isEmpty
+                : vm.hasError
+                ? _buildErrorState(theme, vm)
+                : vm.tasks.isEmpty
                 ? _buildEmptyState(theme)
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemBuilder: (context, index) {
-                      final task = _tasks[index];
-                      final category = task.categoryId != null
-                          ? _categories[task.categoryId!]
-                          : null;
+                      final task = vm.tasks[index];
+                      final category = vm.getCategoryForTask(task);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _TaskTile(
@@ -166,25 +161,22 @@ class TasksTabState extends State<TasksTab> {
                                 builder: (_) => TaskDetailScreen(taskId: task.id),
                               ),
                             );
-                            await _loadTasks();
+                            await vm.loadTasks();
                           },
                           onChanged: (value) async {
                             final audio = AppScope.of(context).audio;
-                            await _repo.setTaskDone(task.id, value);
+                            await vm.toggleTaskDone(task.id, value);
                             if (value) {
                               audio.playEffect(AudioEffect.taskComplete);
                             }
-                            await _loadTasks();
                           },
                           onResurrect: () async {
                             final messenger = ScaffoldMessenger.of(context);
-                            await _repo.resurrectTask(task.id);
-                            if (!mounted) return;
-                            await _loadTasks();
+                            await vm.resurrectTask(task.id);
                             if (mounted) {
                               messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text('Задача "${task.title}" воскрешена как Hardcore!'),
+                                  content: Text(l10n.taskResurrected(task.title)),
                                   backgroundColor: const Color(0xFFFF5722),
                                 ),
                               );
@@ -193,7 +185,7 @@ class TasksTabState extends State<TasksTab> {
                         ),
                       );
                     },
-                    itemCount: _tasks.length,
+                    itemCount: vm.tasks.length,
                   ),
           ),
         ],
@@ -201,8 +193,148 @@ class TasksTabState extends State<TasksTab> {
     );
   }
 
+  List<Widget> _buildHybridCategoryChips(AppLocalizations l10n, TasksViewModel vm) {
+    const maxVisible = 3;
+    final allStats = vm.categoryStats;
+    final selectedId = vm.selectedCategoryId;
+
+    // 1. Always start with "All Categories"
+    final chips = <Widget>[
+      _buildCategoryChip(l10n.allCategories, null),
+    ];
+
+    // 2. Identify categories to show
+    final List<Category> visibleCategories = [];
+
+    // Always include selected category if it's not "All"
+    if (selectedId != null) {
+      final selectedCat = vm.categories[selectedId];
+      if (selectedCat != null) {
+        visibleCategories.add(selectedCat);
+      }
+    }
+
+    // Fill remaining slots with most popular (by task count), excluding selected
+    final remainingCount = maxVisible - visibleCategories.length;
+    if (remainingCount > 0) {
+      final popular = allStats
+          .where((s) => s.category.id != selectedId)
+          .toList()
+        ..sort((a, b) => b.taskCount.compareTo(a.taskCount));
+
+      for (var i = 0; i < remainingCount && i < popular.length; i++) {
+        visibleCategories.add(popular[i].category);
+      }
+    }
+
+    // 3. Render visible category chips
+    for (final cat in visibleCategories) {
+      chips.add(const SizedBox(width: 4));
+      chips.add(_buildCategoryChip(cat.name, cat.id, color: Color(cat.color)));
+    }
+
+    // 4. Add "More..." if there are more categories
+    if (allStats.length > visibleCategories.length + (selectedId == null ? 0 : 0)) {
+      // Actually if total categories > visible categories shown (excluding All)
+      if (allStats.length > visibleCategories.length) {
+         chips.add(const SizedBox(width: 4));
+         chips.add(
+           ActionChip(
+             label: Text(l10n.more),
+             onPressed: () => _showAllCategoriesSheet(l10n, vm),
+             backgroundColor: Colors.white,
+             side: const BorderSide(color: Color(0xFFCDD5CF)),
+             labelStyle: const TextStyle(
+               color: AppColors.mutedText,
+               fontSize: 12,
+               fontWeight: FontWeight.w600,
+             ),
+             padding: const EdgeInsets.symmetric(horizontal: 4),
+           ),
+         );
+      }
+    }
+
+    return chips;
+  }
+
+  void _showAllCategoriesSheet(AppLocalizations l10n, TasksViewModel vm) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: 24 + MediaQuery.of(context).padding.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.allCategories,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildCategoryChip(l10n.allCategories, null),
+                  for (final stat in vm.categoryStats)
+                    _buildCategoryChip(
+                      stat.category.name,
+                      stat.category.id,
+                      color: Color(stat.category.color),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryChip(String label, int? categoryId, {Color? color}) {
+    final vm = _vm!;
+    final isSelected = vm.selectedCategoryId == categoryId;
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      showCheckmark: false,
+      onSelected: (_) {
+        vm.setSelectedCategoryId(categoryId);
+      },
+      selectedColor: color ?? AppColors.primary,
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.mutedText,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      side: BorderSide(
+        color: isSelected ? (color ?? AppColors.primary) : const Color(0xFFCDD5CF),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+    );
+  }
+
   Widget _buildFilterChip(String label, TaskFilter filter) {
-    final isSelected = _filter == filter;
+    final vm = _vm!;
+    final isSelected = vm.filter == filter;
     final isBurnedFilter = filter == TaskFilter.burned;
 
     Color selectedColor = AppColors.primary;
@@ -220,12 +352,9 @@ class TasksTabState extends State<TasksTab> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
+      showCheckmark: false,
       onSelected: (_) {
-        setState(() {
-          _filter = filter;
-          _isLoading = true;
-        });
-        _loadTasks();
+        vm.setFilter(filter);
       },
       selectedColor: selectedColor,
       backgroundColor: Colors.white,
@@ -240,6 +369,7 @@ class TasksTabState extends State<TasksTab> {
   }
 
   Widget _buildEmptyState(ThemeData theme) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 48),
@@ -247,7 +377,7 @@ class TasksTabState extends State<TasksTab> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Готовы к новым свершениям?\nПервая задача самая важная!',
+              l10n.emptyTasks,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.mutedText,
@@ -259,7 +389,8 @@ class TasksTabState extends State<TasksTab> {
     );
   }
 
-  Widget _buildErrorState(ThemeData theme) {
+  Widget _buildErrorState(ThemeData theme, TasksViewModel vm) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -273,7 +404,7 @@ class TasksTabState extends State<TasksTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Ошибка загрузки',
+                l10n.loadErrorTitle,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryDark,
@@ -281,7 +412,7 @@ class TasksTabState extends State<TasksTab> {
               ),
               const SizedBox(height: 8),
               Text(
-                _errorMessage ?? '',
+                vm.errorMessage ?? '',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.mutedText,
                 ),
@@ -289,13 +420,13 @@ class TasksTabState extends State<TasksTab> {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: _loadTasks,
+                onPressed: vm.loadTasks,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
                   shape: const StadiumBorder(),
                 ),
-                child: const Text('Повторить попытку'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -322,6 +453,7 @@ class _TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isBurned = task.isBurned && !task.isDone;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 0),
@@ -361,25 +493,25 @@ class _TaskTile extends StatelessWidget {
           if (isBurned) ...[
             const SizedBox(height: 4),
             Row(
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   Icons.local_fire_department,
                   size: 14,
                   color: AppColors.error,
                 ),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(
-                  'Сгорела',
-                  style: TextStyle(fontSize: 12, color: AppColors.error),
+                  l10n.burned,
+                  style: const TextStyle(fontSize: 12, color: AppColors.error),
                 ),
               ],
             ),
           ],
           if (task.isHardcore && !task.isDone) ...[
             const SizedBox(height: 4),
-            const Text(
-              'Hardcore: x1.5 XP',
-              style: TextStyle(
+            Text(
+              l10n.taskHardcoreBonus,
+              style: const TextStyle(
                 fontSize: 10,
                 color: Color(0xFFFF5722),
                 fontWeight: FontWeight.w600,
