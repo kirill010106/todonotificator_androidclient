@@ -16,8 +16,8 @@ class ProfileViewModel extends ChangeNotifier {
         _taskRepository = taskRepository,
         _timerController = timerController,
         _gamificationService = gamificationService {
-    _timerController.addListener(notifyListeners);
-    _gamificationService.addListener(_onGamificationUpdate);
+    _timerController.addListener(_onServiceUpdate);
+    _gamificationService.addListener(_onServiceUpdate);
   }
 
   final AuthRepository _authRepository;
@@ -32,12 +32,12 @@ class ProfileViewModel extends ChangeNotifier {
   int _burnedTasks = 0;
   bool _isLoading = true;
   bool _showIntervals = true;
+  bool _isDisposed = false;
 
   User? get user => _user;
   TargetOption? get target => _target;
   int get doneTasks => _doneTasks;
   int get burnedTasks => _burnedTasks;
-  // streak is now sourced from GamificationService
   int get streak => _gamificationService.progress.streakDays;
   bool get isLoading => _isLoading;
   bool get showIntervals => _showIntervals;
@@ -76,13 +76,17 @@ class ProfileViewModel extends ChangeNotifier {
   ];
 
   Future<void> load() async {
+    if (_isDisposed) return;
     _isLoading = true;
-    notifyListeners();
+    _safeNotify();
 
     try {
       _user = await _authRepository.getCurrentUser();
+      if (_isDisposed) return;
       
       final targetId = await _settingsRepository.getSelectedTarget();
+      if (_isDisposed) return;
+
       if (targetId != null) {
         _target = _options.firstWhere(
           (o) => o.id == targetId,
@@ -93,18 +97,22 @@ class ProfileViewModel extends ChangeNotifier {
       }
 
       final tasks = await _taskRepository.fetchTasks();
+      if (_isDisposed) return;
+
       _doneTasks = tasks.where((t) => t.isDone).length;
       _burnedTasks = tasks.where((t) => !t.isDone && t.isBurned).length;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isLoading = false;
+        _safeNotify();
+      }
     }
   }
 
   void setShowIntervals(bool value) {
     if (_showIntervals == value) return;
     _showIntervals = value;
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> logout() async {
@@ -113,12 +121,27 @@ class ProfileViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _timerController.removeListener(notifyListeners);
-    _gamificationService.removeListener(_onGamificationUpdate);
+    if (_isDisposed) return;
+    _timerController.removeListener(_onServiceUpdate);
+    _gamificationService.removeListener(_onServiceUpdate);
+    _isDisposed = true;
     super.dispose();
   }
 
-  void _onGamificationUpdate() {
-    notifyListeners();
+  void _safeNotify() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
+  void _onServiceUpdate() {
+    _safeNotify();
   }
 }

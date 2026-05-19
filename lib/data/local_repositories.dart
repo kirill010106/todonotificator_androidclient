@@ -1139,3 +1139,65 @@ class LocalGamificationRepository implements GamificationRepository {
   String _dateString(DateTime dt) =>
       '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 }
+
+class LocalStatsRepository implements StatsRepository {
+  LocalStatsRepository(this._db);
+
+  final LocalDatabase _db;
+
+  @override
+  Future<DailyStats> getStats(int userId, String date) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'daily_stats',
+      where: 'user_id = ? AND date = ?',
+      whereArgs: [userId, date],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return DailyStats(
+        userId: userId,
+        date: date,
+        pomodoros: 0,
+        focusSeconds: 0,
+      );
+    }
+    return DailyStats.fromMap(rows.first);
+  }
+
+  @override
+  Future<DailyStats> incrementStats({
+    required int userId,
+    required String date,
+    int pomodoros = 0,
+    int focusSeconds = 0,
+  }) async {
+    final db = await _db.database;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'daily_stats',
+        columns: ['id'],
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [userId, date],
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        await txn.insert('daily_stats', {
+          'user_id': userId,
+          'date': date,
+          'pomodoros': pomodoros,
+          'focus_seconds': focusSeconds,
+        });
+      } else {
+        await txn.rawUpdate(
+          'UPDATE daily_stats '
+          'SET pomodoros = pomodoros + ?, focus_seconds = focus_seconds + ? '
+          'WHERE user_id = ? AND date = ?',
+          [pomodoros, focusSeconds, userId, date],
+        );
+      }
+    });
+    return getStats(userId, date);
+  }
+}

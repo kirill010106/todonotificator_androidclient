@@ -15,6 +15,7 @@ class TasksViewModel extends ChangeNotifier {
   TaskFilter _filter = TaskFilter.all;
   int? _selectedCategoryId;
   String _searchQuery = '';
+  bool _isDisposed = false;
 
   List<Task> get tasks => _tasks;
   Map<int, Category> get categories => _categories;
@@ -27,10 +28,12 @@ class TasksViewModel extends ChangeNotifier {
   String get searchQuery => _searchQuery;
 
   Future<void> loadTasks({bool isInitial = false}) async {
+    if (_isDisposed) return;
+    
     if (isInitial) {
       _isLoading = true;
       _errorMessage = null;
-      notifyListeners();
+      _safeNotify();
     }
 
     try {
@@ -38,6 +41,7 @@ class TasksViewModel extends ChangeNotifier {
         filter: _filter,
         query: _searchQuery.isEmpty ? null : _searchQuery,
       );
+      if (_isDisposed) return;
 
       if (_selectedCategoryId != null) {
         tasksResult = tasksResult
@@ -46,6 +50,7 @@ class TasksViewModel extends ChangeNotifier {
       }
 
       final categoriesResult = await _repository.fetchCategories();
+      if (_isDisposed) return;
 
       _categoryStats = categoriesResult;
       _categories = {
@@ -54,54 +59,80 @@ class TasksViewModel extends ChangeNotifier {
       _tasks = tasksResult;
       _isLoading = false;
     } catch (e) {
+      if (_isDisposed) return;
       _isLoading = false;
       if (isInitial) {
         _errorMessage = 'Не удалось загрузить задачи.';
       }
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   void setFilter(TaskFilter filter) {
-    if (_filter == filter) return;
+    if (_filter == filter || _isDisposed) return;
     _filter = filter;
     loadTasks();
   }
 
   void setSelectedCategoryId(int? categoryId) {
-    if (_selectedCategoryId == categoryId) return;
+    if (_selectedCategoryId == categoryId || _isDisposed) return;
     _selectedCategoryId = categoryId;
     loadTasks();
   }
 
   void setSearchQuery(String query) {
-    if (_searchQuery == query) return;
+    if (_searchQuery == query || _isDisposed) return;
     _searchQuery = query;
     loadTasks();
   }
 
   Future<void> toggleTaskDone(int id, bool isDone) async {
+    if (_isDisposed) return;
     try {
       await _repository.setTaskDone(id, isDone);
       await loadTasks();
     } catch (e) {
-      _errorMessage = 'Не удалось обновить статус задачи.';
-      notifyListeners();
+      if (!_isDisposed) {
+        _errorMessage = 'Не удалось обновить статус задачи.';
+        _safeNotify();
+      }
     }
   }
 
   Future<void> resurrectTask(int id) async {
+    if (_isDisposed) return;
     try {
       await _repository.resurrectTask(id);
       await loadTasks();
     } catch (e) {
-      _errorMessage = 'Не удалось воскресить задачу.';
-      notifyListeners();
+      if (!_isDisposed) {
+        _errorMessage = 'Не удалось воскресить задачу.';
+        _safeNotify();
+      }
     }
   }
 
   Category? getCategoryForTask(Task task) {
     if (task.categoryId == null) return null;
     return _categories[task.categoryId!];
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  void _safeNotify() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
   }
 }

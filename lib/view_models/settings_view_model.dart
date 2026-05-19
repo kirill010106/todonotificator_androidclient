@@ -1,4 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:pomorodo_todo/l10n/app_localizations.dart';
+
+import '../data/local_database.dart';
 import '../data/repositories.dart';
 
 class SettingsViewModel extends ChangeNotifier {
@@ -14,7 +21,7 @@ class SettingsViewModel extends ChangeNotifier {
   bool _darkTheme = false;
   bool _strictMode = false;
   String _languageCode = 'ru';
-  String _targetTitle = 'В ТОНУСЕ';
+  String _targetTitle = 'tone';
   bool _isLoading = true;
 
   bool get darkTheme => _darkTheme;
@@ -68,5 +75,48 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<String?> getSelectedTargetId() async {
     return await _settingsRepository.getSelectedTarget();
+  }
+
+  Future<bool> exportData(AppLocalizations l10n) async {
+    try {
+      final json = await LocalDatabase.instance.exportData();
+      final tempDir = await getTemporaryDirectory();
+      final date = DateTime.now().toString().split(' ')[0].replaceAll('-', '');
+      final file = File('${tempDir.path}/pomodoro_backup_$date.json');
+      await file.writeAsString(json);
+
+      // ignore: deprecated_member_use
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: l10n.exportData,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[SettingsViewModel] Export error: $e');
+      return false;
+    }
+  }
+
+  Future<bool?> importData() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        return null; // Cancelled
+      }
+
+      final file = File(result.files.single.path!);
+      final json = await file.readAsString();
+
+      await LocalDatabase.instance.importData(json);
+      await load();
+      return true;
+    } catch (e) {
+      debugPrint('[SettingsViewModel] Import error: $e');
+      return false;
+    }
   }
 }

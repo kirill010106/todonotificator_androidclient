@@ -36,6 +36,7 @@ class AppServices {
     required this.auth,
     required this.tasks,
     required this.settings,
+    required this.stats,
     required this.timer,
     required this.navigation,
     required this.notifications,
@@ -48,6 +49,7 @@ class AppServices {
   final AuthRepository auth;
   final TaskRepository tasks;
   final SettingsRepository settings;
+  final StatsRepository stats;
   final TimerController timer;
   final AppNavigationState navigation;
   final NotificationService notifications;

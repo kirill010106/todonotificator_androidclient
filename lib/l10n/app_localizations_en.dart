@@ -234,7 +234,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get completed => 'Completed';
 
   @override
-  String pomodoroCount(int count) {
+  String get completedToday => 'Today';
+
+  @override
+  String get focusToday => 'Focus today';
+
+  @override
+  String minutesShort(int count) {
+    return '$count min';
+  }
+
+  @override
+  String pomodoroCount(num count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -247,16 +258,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get focus => 'Focus';
-
-  @override
-  String cycleLabel(int current, int total) {
-    return 'Cycle $current/$total';
-  }
-
-  @override
-  String cycleNextLabel(int current, int next, int total) {
-    return 'Cycle $current/$total → Cycle $next/$total';
-  }
 
   @override
   String get penaltyFocus => 'Penalty Focus';
@@ -386,7 +387,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccount => 'Delete Account';
 
   @override
-  String versionLabel(String version) {
+  String versionLabel(Object version) {
     return 'Version: $version';
   }
 
@@ -481,7 +482,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leaveCategoryless => 'Leave without category';
 
   @override
-  String notesCountShort(int count) {
+  String notesCountShort(Object count) {
     return 'Notes: $count';
   }
 
@@ -490,6 +491,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get more => 'More...';
+
+  @override
+  String get dataBackup => 'Data Backup';
+
+  @override
+  String get exportData => 'Export Data';
+
+  @override
+  String get importData => 'Import Data';
+
+  @override
+  String get importSuccess => 'Data restored successfully';
+
+  @override
+  String get importFailure => 'Failed to read file or invalid format';
+
+  @override
+  String get exportFailure => 'Failed to export data';
 
   @override
   String get choosePace => 'Choose your pace';

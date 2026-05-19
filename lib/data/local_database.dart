@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -22,7 +23,7 @@ class LocalDatabase {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE users ('
@@ -86,6 +87,16 @@ class LocalDatabase {
           'user_id INTEGER NOT NULL, '
           'unlocked_at INTEGER NOT NULL, '
           'PRIMARY KEY (id, user_id)'
+          ')',
+        );
+        await db.execute(
+          'CREATE TABLE daily_stats ('
+          'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+          'user_id INTEGER NOT NULL, '
+          'date TEXT NOT NULL, '
+          'pomodoros INTEGER NOT NULL DEFAULT 0, '
+          'focus_seconds INTEGER NOT NULL DEFAULT 0, '
+          'UNIQUE(user_id, date)'
           ')',
         );
       },
@@ -153,7 +164,83 @@ class LocalDatabase {
             'ALTER TABLE task_items ADD COLUMN xp_awarded INTEGER NOT NULL DEFAULT 0',
           );
         }
+        if (oldVersion < 7) {
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS daily_stats ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'user_id INTEGER NOT NULL, '
+            'date TEXT NOT NULL, '
+            'pomodoros INTEGER NOT NULL DEFAULT 0, '
+            'focus_seconds INTEGER NOT NULL DEFAULT 0, '
+            'UNIQUE(user_id, date)'
+            ')',
+          );
+        }
       },
     );
+  }
+
+  /// Exports all data (except users and session settings) to a JSON string.
+  Future<String> exportData() async {
+    final db = await database;
+    final Map<String, dynamic> export = {};
+
+    const tables = [
+      'tasks',
+      'categories',
+      'task_items',
+      'user_xp',
+      'achievements',
+      'settings',
+    ];
+
+    for (final table in tables) {
+      final rows = await db.query(table);
+      // For settings, we might want to exclude current_user_id to avoid login state confusion on import
+      if (table == 'settings') {
+        export[table] = rows.where((r) => r['key'] != 'current_user_id').toList();
+      } else {
+        export[table] = rows;
+      }
+    }
+
+    return jsonEncode(export);
+  }
+
+  /// Wipes current data and imports from a JSON string.
+  /// Uses a transaction to ensure atomicity.
+  Future<void> importData(String jsonString) async {
+    final db = await database;
+    final Map<String, dynamic> data = jsonDecode(jsonString);
+
+    await db.transaction((txn) async {
+      // 1. Wipe existing data
+      await txn.delete('tasks');
+      await txn.delete('categories');
+      await txn.delete('task_items');
+      await txn.delete('user_xp');
+      await txn.delete('achievements');
+      // We don't wipe 'settings' completely to keep current user ID, 
+      // but we will update other keys if present.
+
+      // 2. Insert new data
+      for (final entry in data.entries) {
+        final table = entry.key;
+        final rows = entry.value as List;
+
+        for (final row in rows) {
+          final rowMap = Map<String, dynamic>.from(row as Map);
+          if (table == 'settings') {
+            await txn.insert(
+              table,
+              rowMap,
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          } else {
+            await txn.insert(table, rowMap);
+          }
+        }
+      }
+    });
   }
 }

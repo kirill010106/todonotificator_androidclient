@@ -69,40 +69,18 @@
   "noTitle": "No Title",
   "addNoteDescriptionHint": "Add a note description...",
   "completed": "Completed",
-  "pomodoroCount": "{count, plural, =0{no Pomodoros} =1{1 Pomodoro} other{{count} Pomodoros}}",
-  "@pomodoroCount": {
+  "completedToday": "Today",
+  "focusToday": "Focus today",
+  "minutesShort": "{count} min",
+  "@minutesShort": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
+  "pomodoroCount": "{count, plural, =0{no Pomodoros} =1{1 Pomodoro} other{{count} Pomodoros}}",
   "focus": "Focus",
-  "cycleLabel": "Cycle {current}/{total}",
-  "@cycleLabel": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "cycleNextLabel": "Cycle {current}/{total} → Cycle {next}/{total}",
-  "@cycleNextLabel": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "next": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "penaltyFocus": "Penalty Focus",
   "timeToRest": "Time to rest",
   "timeToSeriousRest": "Time for a serious rest",
@@ -177,13 +155,6 @@
   "changePassword": "Change Password",
   "deleteAccount": "Delete Account",
   "versionLabel": "Version: {version}",
-  "@versionLabel": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
   "areYouSure": "Are you sure?",
   "deleteAccountDesc": "Do you really want to delete your account?\nThis action cannot be undone.\nAll your information will be deleted from our servers.",
   "deleteTimer": "Delete ({seconds})",
@@ -214,15 +185,14 @@
   "migrateTo": "Or migrate to:",
   "leaveCategoryless": "Leave without category",
   "notesCountShort": "Notes: {count}",
-  "@notesCountShort": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "editCategory": "Edit Category",
   "more": "More...",
+  "dataBackup": "Data Backup",
+  "exportData": "Export Data",
+  "importData": "Import Data",
+  "importSuccess": "Data restored successfully",
+  "importFailure": "Failed to read file or invalid format",
+  "exportFailure": "Failed to export data",
   "choosePace": "Choose your pace",
   "paceDescription": "Adjust focus for your tasks",
   "paceEasyTitle": "EASY",

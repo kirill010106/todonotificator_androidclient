@@ -69,40 +69,18 @@
   "noTitle": "Без названия",
   "addNoteDescriptionHint": "Добавьте описание заметки...",
   "completed": "Выполнено",
-  "pomodoroCount": "{count, plural, =0{нет Помодоро} =1{1 Помодоро} other{{count} Помодоро}}",
-  "@pomodoroCount": {
+  "completedToday": "Сегодня",
+  "focusToday": "Фокус сегодня",
+  "minutesShort": "{count} мин",
+  "@minutesShort": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
+  "pomodoroCount": "{count, plural, =0{нет Помодоро} =1{1 Помодоро} other{{count} Помодоро}}",
   "focus": "Фокус",
-  "cycleLabel": "Цикл {current}/{total}",
-  "@cycleLabel": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "cycleNextLabel": "Цикл {current}/{total} → Цикл {next}/{total}",
-  "@cycleNextLabel": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "next": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "penaltyFocus": "Штрафной фокус",
   "timeToRest": "Пора отдохнуть",
   "timeToSeriousRest": "Пора серьезно отдохнуть",
@@ -177,13 +155,6 @@
   "changePassword": "Сменить пароль",
   "deleteAccount": "Удалить аккаунт",
   "versionLabel": "Версия: {version}",
-  "@versionLabel": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
   "areYouSure": "Вы уверены?",
   "deleteAccountDesc": "Вы действительно хотите удалить аккаунт?\nОтменить данное действие невозможно.\nПосле подтверждения вся сохраненная о Вас информация будет удалена с наших серверов.",
   "deleteTimer": "Удалить ({seconds})",
@@ -214,15 +185,14 @@
   "migrateTo": "Или перенести в:",
   "leaveCategoryless": "Оставить без категории",
   "notesCountShort": "Заметок: {count}",
-  "@notesCountShort": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "editCategory": "Редактировать",
   "more": "Ещё...",
+  "dataBackup": "Резервное копирование",
+  "exportData": "Экспорт данных",
+  "importData": "Импорт данных",
+  "importSuccess": "Данные успешно восстановлены",
+  "importFailure": "Ошибка при чтении файла или неверный формат",
+  "exportFailure": "Не удалось экспортировать данные",
   "choosePace": "Выберите темп",
   "paceDescription": "Настройте фокус под свои задачи",
   "paceEasyTitle": "ЛЕГКИЙ",

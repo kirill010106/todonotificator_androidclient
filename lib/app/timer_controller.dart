@@ -13,11 +13,13 @@ class TimerController extends ChangeNotifier {
     required TaskRepository tasks,
     required GamificationService gamification,
     required AudioService audio,
+    required StatsRepository stats,
     NotificationService? notifications,
     int? userId,
   }) : _tasks = tasks,
        _gamification = gamification,
        _audio = audio,
+       _stats = stats,
        _notifications = notifications,
        _userId = userId {
     _remaining = focusDuration;
@@ -32,6 +34,7 @@ class TimerController extends ChangeNotifier {
   final TaskRepository _tasks;
   final GamificationService _gamification;
   final AudioService _audio;
+  final StatsRepository _stats;
   final NotificationService? _notifications;
   final int? _userId;
   Timer? _timer;
@@ -67,6 +70,7 @@ class TimerController extends ChangeNotifier {
   }
 
   int? get taskId => _taskId;
+  int? get userId => _userId;
   TimerDialog? get pendingDialog => _pendingDialog;
   bool get isMiniPlayerDismissed => _isMiniPlayerDismissed;
 
@@ -326,6 +330,20 @@ class TimerController extends ChangeNotifier {
         xpMultiplier: multiplier,
         totalPomodoros: _completedPomodoros,
       );
+
+      // Persist daily stats
+      if (_userId != null) {
+        final now = DateTime.now();
+        final dateStr =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+        await _stats.incrementStats(
+          userId: _userId!,
+          date: dateStr,
+          pomodoros: 1,
+          focusSeconds: focusDuration.inSeconds,
+        );
+      }
+
       // When a focus period completes, advance to break/rest automatically.
       // Only show dialogs when the user explicitly requested stop.
       _advanceAfterFocus();

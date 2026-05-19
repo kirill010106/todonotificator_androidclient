@@ -130,3 +130,16 @@ abstract class GamificationRepository {
   /// Persists a newly unlocked achievement.
   Future<void> unlockAchievement(int userId, String achievementId);
 }
+
+abstract class StatsRepository {
+  /// Returns stats for the given date (formatted YYYY-MM-DD) and userId.
+  Future<DailyStats> getStats(int userId, String date);
+
+  /// Increments pomodoros and focus seconds for the given date and userId.
+  Future<DailyStats> incrementStats({
+    required int userId,
+    required String date,
+    int pomodoros = 0,
+    int focusSeconds = 0,
+  });
+}

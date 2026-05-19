@@ -17,6 +17,7 @@ class TaskDetailViewModel extends ChangeNotifier {
   bool _hasError = false;
   bool _isSaving = false;
   int _draftItemSeed = -1;
+  bool _isDisposed = false;
 
   Timer? _titleTimer;
   Timer? _noteTimer;
@@ -30,13 +31,15 @@ class TaskDetailViewModel extends ChangeNotifier {
   bool get isNew => taskId == null;
 
   Future<void> load() async {
+    if (_isDisposed) return;
     _isLoading = true;
     _hasError = false;
-    notifyListeners();
+    _safeNotify();
 
     try {
       if (isNew) {
         final categoriesResult = await _repository.fetchCategories();
+        if (_isDisposed) return;
         _task = Task(
           id: 0,
           title: '',
@@ -50,73 +53,79 @@ class TaskDetailViewModel extends ChangeNotifier {
         _categories = categoriesResult;
       } else {
         final taskResult = await _repository.getTask(taskId!);
+        if (_isDisposed) return;
         if (taskResult == null) {
           _hasError = true;
         } else {
           _task = taskResult;
           _items = await _repository.fetchTaskItems(taskResult.id);
+          if (_isDisposed) return;
           _categories = await _repository.fetchCategories();
         }
       }
+      if (_isDisposed) return;
       _isLoading = false;
     } catch (_) {
+      if (_isDisposed) return;
       _isLoading = false;
       _hasError = true;
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   void updateTitle(String title) {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     _task = _task!.copyWith(title: title.trim());
 
     if (isNew) {
-      notifyListeners();
+      _safeNotify();
       return;
     }
 
     _titleTimer?.cancel();
     _titleTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (_isDisposed) return;
       await _repository.updateTaskTitle(taskId!, title.trim());
     });
-    notifyListeners();
+    _safeNotify();
   }
 
   void updateNote(String noteStorage) {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     _task = _task!.copyWith(note: noteStorage);
 
     if (isNew) {
-      notifyListeners();
+      _safeNotify();
       return;
     }
 
     _noteTimer?.cancel();
     _noteTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (_isDisposed) return;
       await _repository.updateTaskNote(taskId!, noteStorage);
     });
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> resurrectTask() async {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     await _repository.resurrectTask(_task!.id);
     await load();
   }
 
   Future<void> toggleTaskDone(bool isDone) async {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     final nextBurned = isDone ? false : _task!.isBurned;
     _task = _task!.copyWith(isDone: isDone, isBurned: nextBurned);
 
     if (!isNew) {
       await _repository.setTaskDone(taskId!, isDone);
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> addChecklistItem(String text) async {
-    if (_task == null || text.trim().isEmpty) return;
+    if (_task == null || text.trim().isEmpty || _isDisposed) return;
     final trimmedText = text.trim();
 
     if (isNew) {
@@ -133,12 +142,14 @@ class TaskDetailViewModel extends ChangeNotifier {
         taskId: _task!.id,
         text: trimmedText,
       );
+      if (_isDisposed) return;
       _items = [..._items, item];
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> toggleItem(TaskItem item, bool isDone) async {
+    if (_isDisposed) return;
     if (isNew) {
       _items = _items
           .map(
@@ -149,6 +160,7 @@ class TaskDetailViewModel extends ChangeNotifier {
           .toList();
     } else {
       await _repository.setTaskItemDone(item.id, isDone);
+      if (_isDisposed) return;
       _items = _items
           .map(
             (current) => current.id == item.id
@@ -157,28 +169,31 @@ class TaskDetailViewModel extends ChangeNotifier {
           )
           .toList();
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> deleteItem(TaskItem item) async {
+    if (_isDisposed) return;
     if (isNew) {
       _items = _items.where((current) => current.id != item.id).toList();
     } else {
       await _repository.deleteTaskItem(item.id);
+      if (_isDisposed) return;
       _items = _items.where((current) => current.id != item.id).toList();
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> setCategory(int? categoryId) async {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     _task = _task!.copyWith(setCategory: true, categoryId: categoryId);
 
     if (!isNew) {
       await _repository.setTaskCategory(taskId!, categoryId);
+      if (_isDisposed) return;
       _categories = await _repository.fetchCategories();
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<Category> addCategory(String name, int color) async {
@@ -188,7 +203,7 @@ class TaskDetailViewModel extends ChangeNotifier {
   }
 
   Future<void> setReminder(ReminderType? type, int? minutes) async {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     _task = _task!.copyWith(
       setReminder: true,
       reminderType: type,
@@ -198,11 +213,11 @@ class TaskDetailViewModel extends ChangeNotifier {
     if (!isNew) {
       await _repository.setTaskReminder(taskId!, type, minutes);
     }
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> deleteTask() async {
-    if (!isNew) {
+    if (!isNew && !_isDisposed) {
       await _repository.deleteTask(taskId!);
     }
   }
@@ -210,13 +225,13 @@ class TaskDetailViewModel extends ChangeNotifier {
   /// Cancels any pending autosave timers and performs an immediate save of all fields.
   /// Uses [saveTaskFull] to ensure the operation is atomic.
   Future<void> save() async {
-    if (_task == null) return;
+    if (_task == null || _isDisposed) return;
     
     _titleTimer?.cancel();
     _noteTimer?.cancel();
 
     _isSaving = true;
-    notifyListeners();
+    _safeNotify();
 
     try {
       await _repository.saveTaskFull(
@@ -232,13 +247,15 @@ class TaskDetailViewModel extends ChangeNotifier {
         items: _items,
       );
     } finally {
-      _isSaving = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isSaving = false;
+        _safeNotify();
+      }
     }
   }
 
   Future<int?> saveDraft() async {
-    if (!isNew || _task == null) return null;
+    if (!isNew || _task == null || _isDisposed) return null;
 
     final notePlain = extractPlainNote(_task!.note).trim();
     final titleInput = _task!.title.trim();
@@ -248,7 +265,7 @@ class TaskDetailViewModel extends ChangeNotifier {
     }
 
     _isSaving = true;
-    notifyListeners();
+    _safeNotify();
 
     try {
       // If title is empty but content exists, generate a numbered "Без названия" title.
@@ -256,6 +273,7 @@ class TaskDetailViewModel extends ChangeNotifier {
       if (title.isEmpty) {
         const base = 'Без названия';
         final existing = await _repository.fetchTasks(query: base);
+        if (_isDisposed) return null;
         var maxNum = 0;
         final re = RegExp(r'^Без названия(?:\s(\d+))?$');
         for (final t in existing) {
@@ -291,15 +309,32 @@ class TaskDetailViewModel extends ChangeNotifier {
       
       return createdId;
     } finally {
-      _isSaving = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isSaving = false;
+        _safeNotify();
+      }
     }
   }
 
   @override
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
     _titleTimer?.cancel();
     _noteTimer?.cancel();
     super.dispose();
+  }
+
+  void _safeNotify() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
   }
 }

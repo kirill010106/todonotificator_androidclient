@@ -235,7 +235,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get completed => 'Выполнено';
 
   @override
-  String pomodoroCount(int count) {
+  String get completedToday => 'Сегодня';
+
+  @override
+  String get focusToday => 'Фокус сегодня';
+
+  @override
+  String minutesShort(int count) {
+    return '$count мин';
+  }
+
+  @override
+  String pomodoroCount(num count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -248,16 +259,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get focus => 'Фокус';
-
-  @override
-  String cycleLabel(int current, int total) {
-    return 'Цикл $current/$total';
-  }
-
-  @override
-  String cycleNextLabel(int current, int next, int total) {
-    return 'Цикл $current/$total → Цикл $next/$total';
-  }
 
   @override
   String get penaltyFocus => 'Штрафной фокус';
@@ -387,7 +388,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get deleteAccount => 'Удалить аккаунт';
 
   @override
-  String versionLabel(String version) {
+  String versionLabel(Object version) {
     return 'Версия: $version';
   }
 
@@ -482,7 +483,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get leaveCategoryless => 'Оставить без категории';
 
   @override
-  String notesCountShort(int count) {
+  String notesCountShort(Object count) {
     return 'Заметок: $count';
   }
 
@@ -491,6 +492,24 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get more => 'Ещё...';
+
+  @override
+  String get dataBackup => 'Резервное копирование';
+
+  @override
+  String get exportData => 'Экспорт данных';
+
+  @override
+  String get importData => 'Импорт данных';
+
+  @override
+  String get importSuccess => 'Данные успешно восстановлены';
+
+  @override
+  String get importFailure => 'Ошибка при чтении файла или неверный формат';
+
+  @override
+  String get exportFailure => 'Не удалось экспортировать данные';
 
   @override
   String get choosePace => 'Выберите темп';

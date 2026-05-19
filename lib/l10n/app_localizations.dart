@@ -518,29 +518,35 @@ abstract class AppLocalizations {
   /// **'Completed'**
   String get completed;
 
+  /// No description provided for @completedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get completedToday;
+
+  /// No description provided for @focusToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus today'**
+  String get focusToday;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String minutesShort(int count);
+
   /// No description provided for @pomodoroCount.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =0{no Pomodoros} =1{1 Pomodoro} other{{count} Pomodoros}}'**
-  String pomodoroCount(int count);
+  String pomodoroCount(num count);
 
   /// No description provided for @focus.
   ///
   /// In en, this message translates to:
   /// **'Focus'**
   String get focus;
-
-  /// No description provided for @cycleLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cycle {current}/{total}'**
-  String cycleLabel(int current, int total);
-
-  /// No description provided for @cycleNextLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cycle {current}/{total} → Cycle {next}/{total}'**
-  String cycleNextLabel(int current, int next, int total);
 
   /// No description provided for @penaltyFocus.
   ///
@@ -786,7 +792,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Version: {version}'**
-  String versionLabel(String version);
+  String versionLabel(Object version);
 
   /// No description provided for @areYouSure.
   ///
@@ -966,7 +972,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Notes: {count}'**
-  String notesCountShort(int count);
+  String notesCountShort(Object count);
 
   /// No description provided for @editCategory.
   ///
@@ -979,6 +985,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More...'**
   String get more;
+
+  /// No description provided for @dataBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Data Backup'**
+  String get dataBackup;
+
+  /// No description provided for @exportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Data'**
+  String get exportData;
+
+  /// No description provided for @importData.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Data'**
+  String get importData;
+
+  /// No description provided for @importSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Data restored successfully'**
+  String get importSuccess;
+
+  /// No description provided for @importFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read file or invalid format'**
+  String get importFailure;
+
+  /// No description provided for @exportFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export data'**
+  String get exportFailure;
 
   /// No description provided for @choosePace.
   ///

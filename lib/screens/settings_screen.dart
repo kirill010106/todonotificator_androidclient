@@ -259,6 +259,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ]),
                     const SizedBox(height: 24),
+                    _buildSectionHeader(l10n.dataBackup),
+                    _buildContainer([
+                      _buildListTile(
+                        icon: Icons.upload_file_outlined,
+                        title: l10n.exportData,
+                        onTap: () async {
+                          final success = await vm.exportData(l10n);
+                          if (!mounted) return;
+                          if (!success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.exportFailure)),
+                            );
+                          }
+                        },
+                      ),
+                      const Divider(height: 1, indent: 48),
+                      _buildListTile(
+                        icon: Icons.file_download_outlined,
+                        title: l10n.importData,
+                        onTap: () async {
+                          final result = await vm.importData();
+                          if (!mounted) return;
+                          if (result == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.importSuccess)),
+                            );
+                          } else if (result == false) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.importFailure)),
+                            );
+                          }
+                        },
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
                     _buildSectionHeader(l10n.accountHeader),
                     _buildContainer([
                       _buildListTile(

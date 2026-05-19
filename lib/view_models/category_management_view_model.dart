@@ -10,6 +10,7 @@ class CategoryManagementViewModel extends ChangeNotifier {
   List<CategoryStats> _categories = [];
   bool _isLoading = false;
   String? _errorMessage;
+  bool _disposed = false;
 
   List<CategoryStats> get categories => _categories;
   bool get isLoading => _isLoading;
@@ -57,6 +58,19 @@ class CategoryManagementViewModel extends ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Не удалось удалить категорию.';
       notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
     }
   }
 }

@@ -289,6 +289,45 @@ class UserProgress {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
+class DailyStats {
+  final int userId;
+  final String date; // YYYY-MM-DD
+  final int pomodoros;
+  final int focusSeconds;
+
+  const DailyStats({
+    required this.userId,
+    required this.date,
+    required this.pomodoros,
+    required this.focusSeconds,
+  });
+
+  factory DailyStats.fromMap(Map<String, Object?> map) {
+    return DailyStats(
+      userId: map['user_id'] as int,
+      date: map['date'] as String,
+      pomodoros: map['pomodoros'] as int,
+      focusSeconds: map['focus_seconds'] as int,
+    );
+  }
+
+  DailyStats copyWith({
+    int? pomodoros,
+    int? focusSeconds,
+  }) {
+    return DailyStats(
+      userId: userId,
+      date: date,
+      pomodoros: pomodoros ?? this.pomodoros,
+      focusSeconds: focusSeconds ?? this.focusSeconds,
+    );
+  }
+}
+
 class AchievementDefinition {
   final String id;
   final String title;

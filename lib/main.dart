@@ -20,6 +20,7 @@ Future<void> main() async {
   final settings = LocalSettingsRepository(database);
   final tasks = LocalTaskRepository(database, settings);
   final gamificationRepo = LocalGamificationRepository(database);
+  final statsRepo = LocalStatsRepository(database);
   final audio = AudioService();
   final gamification = GamificationService(gamificationRepo, audio);
   tasks.gamification = gamification;
@@ -36,6 +37,7 @@ Future<void> main() async {
     tasks: tasks,
     gamification: gamification,
     audio: audio,
+    stats: statsRepo,
     notifications: notifications,
     userId: userId,
   );
@@ -48,6 +50,7 @@ Future<void> main() async {
     auth: auth,
     tasks: tasks,
     settings: settings,
+    stats: statsRepo,
     timer: timer,
     navigation: navigation,
     notifications: notifications,

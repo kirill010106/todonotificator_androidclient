@@ -29,6 +29,7 @@ class _TimerTabState extends State<TimerTab> {
       _vm = TimerViewModel(
         taskRepository: scope.tasks,
         timerController: scope.timer,
+        statsRepository: scope.stats,
       );
       _vm!.addListener(_onVmChanged);
       _vm!.load();
@@ -394,21 +395,7 @@ class _TimerTabState extends State<TimerTab> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7EEE9),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              _cycleLabel(vm, l10n),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
-            ),
-          ),
+          _buildCycleIcons(vm),
           const SizedBox(height: 8),
           Text(
             _phaseLabel(vm, l10n, showNoteMode),
@@ -639,16 +626,16 @@ class _TimerTabState extends State<TimerTab> {
         Expanded(
           child: _StatChip(
             icon: Icons.check_circle_outline,
-            title: l10n.completed,
-            value: l10n.pomodoroCount(vm.completedPomodoros),
+            title: l10n.completedToday,
+            value: l10n.pomodoroCount(vm.todayPomodoros),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _StatChip(
             icon: Icons.track_changes,
-            title: l10n.focus,
-            value: '${vm.focusRate}%',
+            title: l10n.focusToday,
+            value: l10n.minutesShort(vm.todayFocusMinutes),
           ),
         ),
       ],
@@ -659,6 +646,47 @@ class _TimerTabState extends State<TimerTab> {
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     final totalMinutes = duration.inMinutes;
     return '${totalMinutes.toString().padLeft(2, '0')}:$seconds';
+  }
+
+  Widget _buildCycleIcons(TimerViewModel vm) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(TimerController.totalCycles, (index) {
+        final i = index + 1;
+        final isCompleted = i < vm.cycle ||
+            (i == vm.cycle &&
+                (vm.phase == TimerPhase.breakTime ||
+                    vm.phase == TimerPhase.rest));
+        final isActive = i == vm.cycle && vm.phase == TimerPhase.focus;
+        final isUpcoming = i == vm.cycle + 1 && vm.phase == TimerPhase.breakTime;
+
+        IconData icon;
+        Color color;
+
+        if (isCompleted) {
+          icon = Icons.check_circle;
+          color = AppColors.primary;
+        } else if (isActive) {
+          icon = Icons.play_circle;
+          color = AppColors.primary;
+        } else if (isUpcoming) {
+          icon = Icons.play_circle_outline;
+          color = AppColors.primary.withOpacity(0.5);
+        } else {
+          icon = Icons.circle_outlined;
+          color = AppColors.mutedText;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Icon(
+            icon,
+            size: 16,
+            color: color,
+          ),
+        );
+      }),
+    );
   }
 
   String _phaseLabel(TimerViewModel vm, AppLocalizations l10n, bool showNoteMode) {
@@ -676,18 +704,6 @@ class _TimerTabState extends State<TimerTab> {
             ? l10n.remainToFocus
             : l10n.freeFocusMode;
     }
-  }
-
-  String _cycleLabel(TimerViewModel vm, AppLocalizations l10n) {
-    final cycle = vm.cycle;
-    if (vm.phase == TimerPhase.breakTime) {
-      final next = cycle == TimerController.totalCycles ? 1 : cycle + 1;
-      return l10n.cycleNextLabel(cycle, next, TimerController.totalCycles);
-    }
-    if (vm.phase == TimerPhase.rest) {
-      return l10n.cycleNextLabel(cycle, 1, TimerController.totalCycles);
-    }
-    return l10n.cycleLabel(cycle, TimerController.totalCycles);
   }
 }
 
