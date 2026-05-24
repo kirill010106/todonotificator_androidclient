@@ -201,5 +201,16 @@
   "paceToneDesc": "Optimal balance of strength",
   "paceRoastTitle": "ROAST",
   "paceRoastDesc": "Maximum concentration",
-  "letsGo": "Let's go!"
+  "letsGo": "Let's go!",
+  "errorNicknameShort": "Minimum 3 characters",
+  "errorInvalidEmail": "Enter a valid email",
+  "errorPasswordShort": "Minimum 8 characters",
+  "errorPasswordsDontMatch": "Passwords do not match",
+  "errorPolicyNotAccepted": "Please accept the agreement",
+  "errorEmailExists": "Email already exists",
+  "errorNicknameExists": "Nickname already exists",
+  "errorServer": "Server error",
+  "fieldRequired": "Required field",
+  "errorInvalidCredentials": "Invalid login or password",
+  "errorWrongPassword": "Incorrect current password"
 }

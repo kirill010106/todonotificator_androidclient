@@ -337,7 +337,7 @@ class TimerController extends ChangeNotifier {
         final dateStr =
             '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
         await _stats.incrementStats(
-          userId: _userId!,
+          userId: _userId,
           date: dateStr,
           pomodoros: 1,
           focusSeconds: focusDuration.inSeconds,

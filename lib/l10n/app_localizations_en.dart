@@ -536,4 +536,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get letsGo => 'Let\'s go!';
+
+  @override
+  String get errorNicknameShort => 'Minimum 3 characters';
+
+  @override
+  String get errorInvalidEmail => 'Enter a valid email';
+
+  @override
+  String get errorPasswordShort => 'Minimum 8 characters';
+
+  @override
+  String get errorPasswordsDontMatch => 'Passwords do not match';
+
+  @override
+  String get errorPolicyNotAccepted => 'Please accept the agreement';
+
+  @override
+  String get errorEmailExists => 'Email already exists';
+
+  @override
+  String get errorNicknameExists => 'Nickname already exists';
+
+  @override
+  String get errorServer => 'Server error';
+
+  @override
+  String get fieldRequired => 'Required field';
+
+  @override
+  String get errorInvalidCredentials => 'Invalid login or password';
+
+  @override
+  String get errorWrongPassword => 'Incorrect current password';
 }

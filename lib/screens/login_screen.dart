@@ -43,10 +43,10 @@ class _LoginScreenState extends State<LoginScreen> {
     String? passwordError;
 
     if (login.isEmpty) {
-      loginError = l10n.email;
+      loginError = l10n.fieldRequired;
     }
     if (password.isEmpty) {
-      passwordError = l10n.password;
+      passwordError = l10n.fieldRequired;
     }
 
     setState(() {
@@ -99,11 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
   String _mapFailure(AuthFailure? failure, AppLocalizations l10n) {
     switch (failure) {
       case AuthFailure.invalidCredentials:
-        return l10n.error;
+        return l10n.errorInvalidCredentials;
       case AuthFailure.serverError:
-        return l10n.error;
+        return l10n.errorServer;
       default:
-        return l10n.error;
+        return l10n.errorServer;
     }
   }
 

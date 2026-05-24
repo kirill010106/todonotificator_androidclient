@@ -1075,6 +1075,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Let\'s go!'**
   String get letsGo;
+
+  /// No description provided for @errorNicknameShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 3 characters'**
+  String get errorNicknameShort;
+
+  /// No description provided for @errorInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get errorInvalidEmail;
+
+  /// No description provided for @errorPasswordShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 8 characters'**
+  String get errorPasswordShort;
+
+  /// No description provided for @errorPasswordsDontMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get errorPasswordsDontMatch;
+
+  /// No description provided for @errorPolicyNotAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Please accept the agreement'**
+  String get errorPolicyNotAccepted;
+
+  /// No description provided for @errorEmailExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Email already exists'**
+  String get errorEmailExists;
+
+  /// No description provided for @errorNicknameExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Nickname already exists'**
+  String get errorNicknameExists;
+
+  /// No description provided for @errorServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error'**
+  String get errorServer;
+
+  /// No description provided for @fieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required field'**
+  String get fieldRequired;
+
+  /// No description provided for @errorInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid login or password'**
+  String get errorInvalidCredentials;
+
+  /// No description provided for @errorWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect current password'**
+  String get errorWrongPassword;
 }
 
 class _AppLocalizationsDelegate

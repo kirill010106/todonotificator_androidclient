@@ -156,6 +156,7 @@ class _GameBannerWidgetState extends State<_GameBannerWidget>
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.none,
                           ),
                         ),
                       ),

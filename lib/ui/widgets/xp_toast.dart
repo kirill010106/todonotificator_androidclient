@@ -131,6 +131,7 @@ class _XpToastWidgetState extends State<_XpToastWidget>
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.2,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                   ),

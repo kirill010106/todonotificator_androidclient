@@ -40,25 +40,19 @@ void main() {
     });
 
     test('saveDraft creates task and items', () async {
-      final createdTask = Task(
-        id: 123,
-        title: 'Draft Task',
-        isDone: false,
-        isBurned: false,
-        isHardcore: false,
-        createdAt: DateTime.now(),
-      );
-
-      when(() => mockRepo.addTask(title: any(named: 'title')))
-          .thenAnswer((_) async => createdTask);
-      when(() => mockRepo.addTaskItem(taskId: any(named: 'taskId'), text: any(named: 'text')))
-          .thenAnswer((inv) async => TaskItem(
-                id: 1,
-                taskId: inv.namedArguments[#taskId],
-                text: inv.namedArguments[#text],
-                isDone: false,
-                position: 0,
-              ));
+      when(
+        () => mockRepo.saveTaskFull(
+          title: any(named: 'title'),
+          note: any(named: 'note'),
+          categoryId: any(named: 'categoryId'),
+          reminderType: any(named: 'reminderType'),
+          reminderMinutes: any(named: 'reminderMinutes'),
+          isDone: any(named: 'isDone'),
+          isBurned: any(named: 'isBurned'),
+          isHardcore: any(named: 'isHardcore'),
+          items: any(named: 'items'),
+        ),
+      ).thenAnswer((_) async => 123);
 
       await viewModel.load();
       viewModel.updateTitle('Draft Task');
@@ -67,8 +61,22 @@ void main() {
       final resultId = await viewModel.saveDraft();
 
       expect(resultId, 123);
-      verify(() => mockRepo.addTask(title: 'Draft Task')).called(1);
-      verify(() => mockRepo.addTaskItem(taskId: 123, text: 'Draft Item')).called(1);
+      final captured = verify(
+        () => mockRepo.saveTaskFull(
+          title: 'Draft Task',
+          note: any(named: 'note'),
+          categoryId: any(named: 'categoryId'),
+          reminderType: any(named: 'reminderType'),
+          reminderMinutes: any(named: 'reminderMinutes'),
+          isDone: false,
+          isBurned: false,
+          isHardcore: false,
+          items: captureAny(named: 'items'),
+        ),
+      ).captured;
+      final items = captured.single as List<TaskItem>;
+      expect(items, hasLength(1));
+      expect(items.single.text, 'Draft Item');
     });
   });
 

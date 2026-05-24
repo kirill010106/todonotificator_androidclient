@@ -127,7 +127,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.appNote}s (${_vm.categories.firstWhere((c) => c.category.id == category.id).taskCount}):'),
+                    Text('${l10n.notesCount(_vm.categories.firstWhere((c) => c.category.id == category.id).taskCount)}:'),
                     const SizedBox(height: 8),
                     RadioListTile<int?>(
                       title: Text(l10n.leaveCategoryless),

@@ -266,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: l10n.exportData,
                         onTap: () async {
                           final success = await vm.exportData(l10n);
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           if (!success) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(l10n.exportFailure)),
@@ -280,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: l10n.importData,
                         onTap: () async {
                           final result = await vm.importData();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           if (result == true) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(l10n.importSuccess)),

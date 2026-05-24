@@ -671,7 +671,7 @@ class _TimerTabState extends State<TimerTab> {
           color = AppColors.primary;
         } else if (isUpcoming) {
           icon = Icons.play_circle_outline;
-          color = AppColors.primary.withOpacity(0.5);
+          color = AppColors.primary.withValues(alpha: 0.5);
         } else {
           icon = Icons.circle_outlined;
           color = AppColors.mutedText;

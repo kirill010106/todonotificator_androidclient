@@ -55,26 +55,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? policyError;
 
     if (nickname.isEmpty) {
-      nicknameError = l10n.nickname;
+      nicknameError = l10n.fieldRequired;
     } else if (nickname.length < 3) {
-      nicknameError = l10n.error;
+      nicknameError = l10n.errorNicknameShort;
     }
 
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (email.isEmpty) {
-      emailError = l10n.email;
+      emailError = l10n.fieldRequired;
     } else if (!emailRegex.hasMatch(email)) {
-      emailError = l10n.error;
+      emailError = l10n.errorInvalidEmail;
     }
 
     if (password.length < 8) {
-      passwordError = l10n.error;
+      passwordError = l10n.errorPasswordShort;
     }
     if (confirm != password) {
-      confirmError = l10n.error;
+      confirmError = l10n.errorPasswordsDontMatch;
     }
     if (!_accepted) {
-      policyError = l10n.error;
+      policyError = l10n.errorPolicyNotAccepted;
     }
 
     setState(() {
@@ -121,16 +121,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       switch (result.failure) {
         case AuthFailure.emailExists:
-          _emailError = l10n.error;
+          _emailError = l10n.errorEmailExists;
           break;
         case AuthFailure.nicknameExists:
-          _nicknameError = l10n.error;
+          _nicknameError = l10n.errorNicknameExists;
           break;
         case AuthFailure.serverError:
         default:
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(l10n.error),
+              content: Text(l10n.errorServer),
             ),
           );
       }

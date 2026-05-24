@@ -537,4 +537,37 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get letsGo => 'Погнали!';
+
+  @override
+  String get errorNicknameShort => 'Минимум 3 символа';
+
+  @override
+  String get errorInvalidEmail => 'Введите корректный email';
+
+  @override
+  String get errorPasswordShort => 'Минимум 8 символов';
+
+  @override
+  String get errorPasswordsDontMatch => 'Пароли не совпадают';
+
+  @override
+  String get errorPolicyNotAccepted => 'Подтвердите соглашение';
+
+  @override
+  String get errorEmailExists => 'Email уже занят';
+
+  @override
+  String get errorNicknameExists => 'Никнейм уже занят';
+
+  @override
+  String get errorServer => 'Ошибка сервера';
+
+  @override
+  String get fieldRequired => 'Обязательное поле';
+
+  @override
+  String get errorInvalidCredentials => 'Неверный логин или пароль';
+
+  @override
+  String get errorWrongPassword => 'Неверный текущий пароль';
 }

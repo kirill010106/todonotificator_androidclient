@@ -105,9 +105,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 label: l10n.password,
                 isPassword: true,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return l10n.password;
-                  if (v.length < 6) {
-                    return l10n.error;
+                  if (v == null || v.isEmpty) return l10n.fieldRequired;
+                  if (v.length < 8) {
+                    return l10n.errorPasswordShort;
                   }
                   return null;
                 },
@@ -119,7 +119,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 isPassword: true,
                 validator: (v) {
                   if (v != _newPasswordController.text) {
-                    return l10n.error;
+                    return l10n.errorPasswordsDontMatch;
                   }
                   return null;
                 },

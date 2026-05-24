@@ -46,3 +46,6 @@ app.*.map.json
 
 /task
 imgs/
+
+.codegraph/
+.cursor/

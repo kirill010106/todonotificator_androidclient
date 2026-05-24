@@ -201,5 +201,16 @@
   "paceToneDesc": "Оптимальный баланс сил",
   "paceRoastTitle": "ПРОЖАРКА",
   "paceRoastDesc": "Максимальная концентрация",
-  "letsGo": "Погнали!"
+  "letsGo": "Погнали!",
+  "errorNicknameShort": "Минимум 3 символа",
+  "errorInvalidEmail": "Введите корректный email",
+  "errorPasswordShort": "Минимум 8 символов",
+  "errorPasswordsDontMatch": "Пароли не совпадают",
+  "errorPolicyNotAccepted": "Подтвердите соглашение",
+  "errorEmailExists": "Email уже занят",
+  "errorNicknameExists": "Никнейм уже занят",
+  "errorServer": "Ошибка сервера",
+  "fieldRequired": "Обязательное поле",
+  "errorInvalidCredentials": "Неверный логин или пароль",
+  "errorWrongPassword": "Неверный текущий пароль"
 }
