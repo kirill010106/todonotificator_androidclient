@@ -382,6 +382,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get support => 'Связь с поддержкой';
 
   @override
+  String get supportError => 'Не удалось открыть почтовое приложение';
+
+  @override
+  String get addLink => 'Добавить ссылку';
+
+  @override
+  String get linkText => 'Текст';
+
+  @override
+  String get linkUrl => 'URL-адрес';
+
+  @override
+  String get invalidUrl => 'Неверный URL-адрес';
+
+  @override
   String get changePassword => 'Сменить пароль';
 
   @override
@@ -415,6 +430,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get password => 'Пароль';
+
+  @override
+  String get currentPassword => 'Текущий пароль';
+
+  @override
+  String get newPassword => 'Новый пароль';
+
+  @override
+  String get confirmPassword => 'Подтвердите новый пароль';
 
   @override
   String get nickname => 'Никнейм';

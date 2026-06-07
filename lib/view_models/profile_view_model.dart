@@ -9,11 +9,13 @@ class ProfileViewModel extends ChangeNotifier {
     required AuthRepository authRepository,
     required SettingsRepository settingsRepository,
     required TaskRepository taskRepository,
+    required StatsRepository statsRepository,
     required TimerController timerController,
     required GamificationService gamificationService,
   })  : _authRepository = authRepository,
         _settingsRepository = settingsRepository,
         _taskRepository = taskRepository,
+        _statsRepository = statsRepository,
         _timerController = timerController,
         _gamificationService = gamificationService {
     _timerController.addListener(_onServiceUpdate);
@@ -23,6 +25,7 @@ class ProfileViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
   final SettingsRepository _settingsRepository;
   final TaskRepository _taskRepository;
+  final StatsRepository _statsRepository;
   final TimerController _timerController;
   final GamificationService _gamificationService;
 
@@ -30,6 +33,8 @@ class ProfileViewModel extends ChangeNotifier {
   TargetOption? _target;
   int _doneTasks = 0;
   int _burnedTasks = 0;
+  int _doneTasksToday = 0;
+  int _completedPomodorosToday = 0;
   bool _isLoading = true;
   bool _showIntervals = true;
   bool _isDisposed = false;
@@ -38,6 +43,8 @@ class ProfileViewModel extends ChangeNotifier {
   TargetOption? get target => _target;
   int get doneTasks => _doneTasks;
   int get burnedTasks => _burnedTasks;
+  int get doneTasksToday => _doneTasksToday;
+  int get completedPomodorosToday => _completedPomodorosToday;
   int get streak => _gamificationService.progress.streakDays;
   bool get isLoading => _isLoading;
   bool get showIntervals => _showIntervals;
@@ -75,10 +82,12 @@ class ProfileViewModel extends ChangeNotifier {
     ),
   ];
 
-  Future<void> load() async {
+  Future<void> load({bool silent = false}) async {
     if (_isDisposed) return;
-    _isLoading = true;
-    _safeNotify();
+    if (!silent) {
+      _isLoading = true;
+      _safeNotify();
+    }
 
     try {
       _user = await _authRepository.getCurrentUser();
@@ -101,6 +110,25 @@ class ProfileViewModel extends ChangeNotifier {
 
       _doneTasks = tasks.where((t) => t.isDone).length;
       _burnedTasks = tasks.where((t) => !t.isDone && t.isBurned).length;
+
+      // Calculate stats for today
+      final now = DateTime.now();
+      _doneTasksToday = tasks.where((t) {
+        if (!t.isDone || t.completedAt == null) return false;
+        final localCompleted = t.completedAt!.toLocal();
+        return localCompleted.year == now.year &&
+            localCompleted.month == now.month &&
+            localCompleted.day == now.day;
+      }).length;
+
+      if (_user != null) {
+        final dateStr =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+        final stats = await _statsRepository.getStats(_user!.id, dateStr);
+        _completedPomodorosToday = stats.pomodoros;
+      } else {
+        _completedPomodorosToday = 0;
+      }
     } finally {
       if (!_isDisposed) {
         _isLoading = false;
@@ -142,6 +170,6 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   void _onServiceUpdate() {
-    _safeNotify();
+    load(silent: true);
   }
 }

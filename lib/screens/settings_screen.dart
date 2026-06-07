@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pomorodo_todo/l10n/app_localizations.dart';
 import '../app/app_scope.dart';
 import '../ui/theme/app_colors.dart';
@@ -303,7 +304,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Icons.chevron_right,
                           color: AppColors.mutedText,
                         ),
-                        onTap: () {},
+                        onTap: () async {
+                          final Uri emailLaunchUri = Uri(
+                            scheme: 'mailto',
+                            path: 'kirill010106@yandex.ru',
+                          );
+                          try {
+                            await launchUrl(emailLaunchUri);
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l10n.supportError)),
+                              );
+                            }
+                          }
+                        },
                       ),
                       const Divider(height: 1, indent: 48),
                       _buildListTile(

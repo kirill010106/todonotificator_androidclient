@@ -23,6 +23,7 @@ class Task {
   final bool isBurned;
   final bool isHardcore;
   final DateTime createdAt;
+  final DateTime? completedAt;
   final String? note;
   final int? categoryId;
   final ReminderType? reminderType;
@@ -36,6 +37,7 @@ class Task {
     required this.isBurned,
     required this.isHardcore,
     required this.createdAt,
+    this.completedAt,
     this.note,
     this.categoryId,
     this.reminderType,
@@ -53,6 +55,9 @@ class Task {
       isBurned: ((map['is_burned'] as int?) ?? 0) == 1,
       isHardcore: ((map['is_hardcore'] as int?) ?? 0) == 1,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+      completedAt: map['completed_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['completed_at'] as int)
+          : null,
       note: map['note'] as String?,
       categoryId: map['category_id'] as int?,
       reminderType: reminderTypeFromString(reminderValue),
@@ -67,6 +72,8 @@ class Task {
     bool? isBurned,
     bool? isHardcore,
     DateTime? createdAt,
+    DateTime? completedAt,
+    bool setCompletedAt = false,
     String? note,
     int? categoryId,
     bool setCategory = false,
@@ -82,6 +89,7 @@ class Task {
       isBurned: isBurned ?? this.isBurned,
       isHardcore: isHardcore ?? this.isHardcore,
       createdAt: createdAt ?? this.createdAt,
+      completedAt: setCompletedAt ? completedAt : (completedAt ?? this.completedAt),
       note: note ?? this.note,
       categoryId: setCategory ? categoryId : this.categoryId,
       reminderType: setReminder ? reminderType : this.reminderType,

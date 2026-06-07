@@ -23,7 +23,7 @@ class LocalDatabase {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE users ('
@@ -46,6 +46,7 @@ class LocalDatabase {
           'is_burned INTEGER NOT NULL DEFAULT 0, '
           'is_hardcore INTEGER NOT NULL DEFAULT 0, '
           'created_at INTEGER NOT NULL, '
+          'completed_at INTEGER, '
           'xp_awarded INTEGER NOT NULL DEFAULT 0'
           ')',
         );
@@ -175,6 +176,10 @@ class LocalDatabase {
             'UNIQUE(user_id, date)'
             ')',
           );
+        }
+        if (oldVersion < 8) {
+          await db.execute('ALTER TABLE tasks ADD COLUMN completed_at INTEGER');
+          await db.execute('UPDATE tasks SET completed_at = created_at WHERE is_done = 1');
         }
       },
     );

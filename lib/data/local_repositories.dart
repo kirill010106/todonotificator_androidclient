@@ -447,6 +447,7 @@ class LocalTaskRepository implements TaskRepository {
         {
           'is_done': isDone ? 1 : 0,
           if (isDone) 'is_burned': 0,
+          'completed_at': isDone ? DateTime.now().millisecondsSinceEpoch : null,
         },
         where: 'id = ?',
         whereArgs: [id],
@@ -688,9 +689,22 @@ class LocalTaskRepository implements TaskRepository {
             'is_burned': isBurned ? 1 : 0,
             'is_hardcore': isHardcore ? 1 : 0,
             'created_at': now.millisecondsSinceEpoch,
+            'completed_at': isDone ? now.millisecondsSinceEpoch : null,
           });
         } else {
           tid = id;
+          final now = DateTime.now();
+          final existing = await txn.query('tasks', columns: ['is_done', 'completed_at'], where: 'id = ?', whereArgs: [tid]);
+          int? completedAtVal;
+          if (existing.isNotEmpty) {
+            final wasDone = (existing.first['is_done'] as int) == 1;
+            completedAtVal = existing.first['completed_at'] as int?;
+            if (isDone && !wasDone) {
+              completedAtVal = now.millisecondsSinceEpoch;
+            } else if (!isDone) {
+              completedAtVal = null;
+            }
+          }
           await txn.update(
             'tasks',
             {
@@ -702,6 +716,7 @@ class LocalTaskRepository implements TaskRepository {
               'is_done': isDone ? 1 : 0,
               'is_burned': isBurned ? 1 : 0,
               'is_hardcore': isHardcore ? 1 : 0,
+              'completed_at': completedAtVal,
             },
             where: 'id = ?',
             whereArgs: [tid],

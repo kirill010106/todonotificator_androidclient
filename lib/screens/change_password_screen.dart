@@ -94,15 +94,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 32),
               _buildField(
                 controller: _oldPasswordController,
-                label: l10n.password,
+                label: l10n.currentPassword,
                 isPassword: true,
                 validator: (v) =>
-                    v == null || v.isEmpty ? l10n.password : null,
+                    v == null || v.isEmpty ? l10n.fieldRequired : null,
               ),
               const SizedBox(height: 16),
               _buildField(
                 controller: _newPasswordController,
-                label: l10n.password,
+                label: l10n.newPassword,
                 isPassword: true,
                 validator: (v) {
                   if (v == null || v.isEmpty) return l10n.fieldRequired;
@@ -115,9 +115,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 16),
               _buildField(
                 controller: _confirmPasswordController,
-                label: l10n.password,
+                label: l10n.confirmPassword,
                 isPassword: true,
                 validator: (v) {
+                  if (v == null || v.isEmpty) return l10n.fieldRequired;
                   if (v != _newPasswordController.text) {
                     return l10n.errorPasswordsDontMatch;
                   }

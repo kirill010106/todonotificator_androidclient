@@ -381,6 +381,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get support => 'Support';
 
   @override
+  String get supportError => 'Could not open mail app';
+
+  @override
+  String get addLink => 'Add Link';
+
+  @override
+  String get linkText => 'Text';
+
+  @override
+  String get linkUrl => 'URL';
+
+  @override
+  String get invalidUrl => 'Invalid URL';
+
+  @override
   String get changePassword => 'Change Password';
 
   @override
@@ -414,6 +429,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get password => 'Password';
+
+  @override
+  String get currentPassword => 'Current Password';
+
+  @override
+  String get newPassword => 'New Password';
+
+  @override
+  String get confirmPassword => 'Confirm New Password';
 
   @override
   String get nickname => 'Nickname';

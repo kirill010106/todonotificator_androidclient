@@ -708,8 +708,33 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     _onNoteChanged(controller.text);
   }
 
-  void _insertLink() {
-    _noteController.addLink('https://');
+  void _insertLink() async {
+    final selection = _noteController.selection;
+    if (!selection.isValid) return;
+
+    final isCollapsed = selection.isCollapsed;
+    String initialText = '';
+    if (!isCollapsed) {
+      initialText = _noteController.text.substring(selection.start, selection.end);
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final result = await showDialog<_LinkDialogResult>(
+      context: context,
+      builder: (context) => _LinkDialog(
+        initialText: initialText,
+        isTextReadOnly: !isCollapsed,
+        l10n: l10n,
+      ),
+    );
+
+    if (result != null && result.url.isNotEmpty) {
+      if (isCollapsed) {
+        _noteController.addLinkWithText(result.text, result.url);
+      } else {
+        _noteController.addLinkForSelection(result.url);
+      }
+    }
   }
 
   @override
@@ -772,6 +797,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
+              key: const ValueKey('detail_title_field'),
               controller: _titleController,
               onChanged: _onTitleChanged,
               readOnly: !_isEditing,
@@ -993,6 +1019,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               const SizedBox(height: 12),
             ],
             TextField(
+              key: const ValueKey('detail_note_field'),
               controller: _noteController,
               onChanged: _onNoteChanged,
               readOnly: !_isEditing,
@@ -1112,7 +1139,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     switch (_mode) {
       case _NoteScreenMode.editing:
         return FloatingActionButton(
-          heroTag: 'fab_save',
+          heroTag: null,
           onPressed: _vm.isSaving
               ? null
               : () async {
@@ -1139,7 +1166,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 );
               },
               child: FloatingActionButton.small(
-                heroTag: 'fab_start',
+                heroTag: null,
                 onPressed: isDone ? null : _startTimerFromNote,
                 backgroundColor: isDone
                     ? const Color(0xFFE4ECE8)
@@ -1164,7 +1191,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 );
               },
               child: FloatingActionButton.small(
-                heroTag: 'fab_edit',
+                heroTag: null,
                 onPressed: _enterEditingMode,
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primaryDark,
@@ -1174,7 +1201,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             ),
             const SizedBox(width: 8),
             FloatingActionButton(
-              heroTag: 'fab_actions',
+              heroTag: null,
               onPressed: _closeActionsMenu,
               backgroundColor: Colors.white,
               foregroundColor: AppColors.primaryDark,
@@ -1188,7 +1215,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         );
       default:
         return FloatingActionButton(
-          heroTag: 'fab_actions',
+          heroTag: null,
           onPressed: _openActionsMenu,
           backgroundColor: Colors.white,
           foregroundColor: AppColors.primaryDark,
@@ -1270,12 +1297,10 @@ class _ChecklistTile extends StatelessWidget {
       children: [
         Checkbox(
           value: item.isDone,
-          onChanged: editable
-              ? (value) {
-                  if (value == null) return;
-                  onChanged(value);
-                }
-              : null,
+          onChanged: (value) {
+            if (value == null) return;
+            onChanged(value);
+          },
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           activeColor: AppColors.primaryDark,
           side: const BorderSide(color: Color(0xFFCDD5CF)),
@@ -1429,3 +1454,115 @@ const List<int> _palette = [
   0xFF4D7CFF,
   0xFF8B6DFF,
 ];
+
+class _LinkDialogResult {
+  final String text;
+  final String url;
+
+  _LinkDialogResult({required this.text, required this.url});
+}
+
+class _LinkDialog extends StatefulWidget {
+  final String initialText;
+  final bool isTextReadOnly;
+  final AppLocalizations l10n;
+
+  const _LinkDialog({
+    required this.initialText,
+    required this.isTextReadOnly,
+    required this.l10n,
+  });
+
+  @override
+  State<_LinkDialog> createState() => _LinkDialogState();
+}
+
+class _LinkDialogState extends State<_LinkDialog> {
+  late final TextEditingController _textController;
+  late final TextEditingController _urlController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.initialText);
+    _urlController = TextEditingController(text: 'https://');
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.addLink),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!widget.isTextReadOnly) ...[
+              TextFormField(
+                controller: _textController,
+                decoration: InputDecoration(
+                  labelText: widget.l10n.linkText,
+                ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? widget.l10n.fieldRequired
+                    : null,
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextFormField(
+              controller: _urlController,
+              decoration: InputDecoration(
+                labelText: widget.l10n.linkUrl,
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) {
+                  return widget.l10n.fieldRequired;
+                }
+                String urlStr = v.trim();
+                if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
+                  urlStr = 'https://$urlStr';
+                }
+                final uri = Uri.tryParse(urlStr);
+                if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
+                  return widget.l10n.invalidUrl;
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(widget.l10n.cancel),
+        ),
+        TextButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              String urlStr = _urlController.text.trim();
+              if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
+                urlStr = 'https://$urlStr';
+              }
+              Navigator.of(context).pop(
+                _LinkDialogResult(
+                  text: _textController.text.trim(),
+                  url: urlStr,
+                ),
+              );
+            }
+          },
+          child: Text(widget.l10n.ready),
+        ),
+      ],
+    );
+  }
+}

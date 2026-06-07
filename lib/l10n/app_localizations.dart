@@ -776,6 +776,36 @@ abstract class AppLocalizations {
   /// **'Support'**
   String get support;
 
+  /// No description provided for @supportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open mail app'**
+  String get supportError;
+
+  /// No description provided for @addLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Link'**
+  String get addLink;
+
+  /// No description provided for @linkText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get linkText;
+
+  /// No description provided for @linkUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get linkUrl;
+
+  /// No description provided for @invalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid URL'**
+  String get invalidUrl;
+
   /// No description provided for @changePassword.
   ///
   /// In en, this message translates to:
@@ -835,6 +865,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Password'**
   String get password;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Password'**
+  String get currentPassword;
+
+  /// No description provided for @newPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get newPassword;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm New Password'**
+  String get confirmPassword;
 
   /// No description provided for @nickname.
   ///

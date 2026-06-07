@@ -34,6 +34,7 @@ class _ProfileTabState extends State<ProfileTab> {
         authRepository: scope.auth,
         settingsRepository: scope.settings,
         taskRepository: scope.tasks,
+        statsRepository: scope.stats,
         timerController: scope.timer,
         gamificationService: scope.gamification,
       );
@@ -396,10 +397,10 @@ class _ProfileTabState extends State<ProfileTab> {
     int targetVal = 1;
 
     if (vm.showIntervals) {
-      passed = vm.completedPomodoros;
+      passed = vm.completedPomodorosToday;
       targetVal = targetIntervals;
     } else {
-      passed = vm.doneTasks;
+      passed = vm.doneTasksToday;
       targetVal = targetTasks;
     }
 

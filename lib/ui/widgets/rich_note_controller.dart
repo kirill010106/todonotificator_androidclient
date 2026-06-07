@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RichNoteController extends TextEditingController {
   RichNoteController({String text = ''}) : super(text: text) {
@@ -11,6 +13,7 @@ class RichNoteController extends TextEditingController {
   final List<TextRange> _boldRanges = [];
   final List<TextRange> _italicRanges = [];
   final List<LinkRange> _linkRanges = [];
+  final List<TapGestureRecognizer> _recognizers = [];
 
   String _previousText = '';
   bool _isAdjusting = false;
@@ -18,6 +21,22 @@ class RichNoteController extends TextEditingController {
   List<TextRange> get boldRanges => List.unmodifiable(_boldRanges);
   List<TextRange> get italicRanges => List.unmodifiable(_italicRanges);
   List<LinkRange> get linkRanges => List.unmodifiable(_linkRanges);
+
+  @override
+  void dispose() {
+    removeListener(_handleTextChanged);
+    _clearRecognizers();
+    super.dispose();
+  }
+
+  void _clearRecognizers() {
+    for (final r in _recognizers) {
+      try {
+        r.dispose();
+      } catch (_) {}
+    }
+    _recognizers.clear();
+  }
 
   void loadFromStorage(String? raw) {
     final parsed = _decodeStorage(raw);
@@ -71,6 +90,7 @@ class RichNoteController extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
+    _clearRecognizers();
     final baseStyle = style ?? const TextStyle();
     final textValue = value.text;
     if (textValue.isEmpty) {
@@ -79,16 +99,22 @@ class RichNoteController extends TextEditingController {
 
     final boundaries = <int>{0, textValue.length};
     for (final range in _boldRanges) {
-      boundaries.add(range.start);
-      boundaries.add(range.end);
+      if (range.start >= 0 && range.end <= textValue.length && range.start <= range.end) {
+        boundaries.add(range.start);
+        boundaries.add(range.end);
+      }
     }
     for (final range in _italicRanges) {
-      boundaries.add(range.start);
-      boundaries.add(range.end);
+      if (range.start >= 0 && range.end <= textValue.length && range.start <= range.end) {
+        boundaries.add(range.start);
+        boundaries.add(range.end);
+      }
     }
     for (final link in _linkRanges) {
-      boundaries.add(link.start);
-      boundaries.add(link.end);
+      if (link.start >= 0 && link.end <= textValue.length && link.start <= link.end) {
+        boundaries.add(link.start);
+        boundaries.add(link.end);
+      }
     }
     final sorted = boundaries.toList()..sort();
 
@@ -110,13 +136,24 @@ class RichNoteController extends TextEditingController {
       if (isItalic) {
         segmentStyle = segmentStyle.copyWith(fontStyle: FontStyle.italic);
       }
+      TapGestureRecognizer? recognizer;
       if (link != null) {
         segmentStyle = segmentStyle.copyWith(
           color: Colors.blue,
           decoration: TextDecoration.underline,
         );
+        recognizer = TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.tryParse(link.url);
+            if (uri != null) {
+              try {
+                await launchUrl(uri);
+              } catch (_) {}
+            }
+          };
+        _recognizers.add(recognizer);
       }
-      spans.add(TextSpan(text: segment, style: segmentStyle));
+      spans.add(TextSpan(text: segment, style: segmentStyle, recognizer: recognizer));
     }
 
     return TextSpan(style: baseStyle, children: spans);
@@ -156,6 +193,7 @@ class RichNoteController extends TextEditingController {
         LinkRange(start: linkRange.start, end: linkRange.end, url: url),
       );
       _normalizeLinks();
+      _previousText = newText;
       _isAdjusting = false;
       notifyListeners();
       return;
@@ -170,6 +208,45 @@ class RichNoteController extends TextEditingController {
       ),
     );
     _normalizeLinks();
+    _previousText = text;
+    notifyListeners();
+  }
+
+  void addLinkWithText(String linkText, String url) {
+    final selectionRange = selection;
+    if (!selectionRange.isValid) return;
+
+    final start = selectionRange.start;
+    final end = selectionRange.end;
+    final newText = text.replaceRange(start, end, linkText);
+    final linkRange = TextRange(start: start, end: start + linkText.length);
+    _isAdjusting = true;
+    value = value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: linkRange.end),
+    );
+    _linkRanges.add(
+      LinkRange(start: linkRange.start, end: linkRange.end, url: url),
+    );
+    _normalizeLinks();
+    _previousText = newText;
+    _isAdjusting = false;
+    notifyListeners();
+  }
+
+  void addLinkForSelection(String url) {
+    final selectionRange = selection;
+    if (!selectionRange.isValid || selectionRange.isCollapsed) return;
+
+    _linkRanges.add(
+      LinkRange(
+        start: selectionRange.start,
+        end: selectionRange.end,
+        url: url,
+      ),
+    );
+    _normalizeLinks();
+    _previousText = text;
     notifyListeners();
   }
 
@@ -417,11 +494,12 @@ class RichNoteController extends TextEditingController {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic> && decoded['text'] is String) {
+        final textVal = decoded['text'] as String;
         return _RichNotePayload(
-          text: decoded['text'] as String,
-          bold: _decodeRanges(decoded['bold']),
-          italic: _decodeRanges(decoded['italic']),
-          links: _decodeLinks(decoded['links']),
+          text: textVal,
+          bold: _decodeRanges(decoded['bold'], textVal.length),
+          italic: _decodeRanges(decoded['italic'], textVal.length),
+          links: _decodeLinks(decoded['links'], textVal.length),
         );
       }
     } catch (_) {
@@ -435,7 +513,7 @@ class RichNoteController extends TextEditingController {
     );
   }
 
-  List<TextRange> _decodeRanges(Object? raw) {
+  List<TextRange> _decodeRanges(Object? raw, int textLength) {
     if (raw is! List) {
       return const [];
     }
@@ -448,10 +526,11 @@ class RichNoteController extends TextEditingController {
             end: (pair[1] as num).toInt(),
           ),
         )
+        .where((r) => r.start >= 0 && r.end <= textLength && r.start <= r.end)
         .toList();
   }
 
-  List<LinkRange> _decodeLinks(Object? raw) {
+  List<LinkRange> _decodeLinks(Object? raw, int textLength) {
     if (raw is! List) return const [];
     final out = <LinkRange>[];
     for (final item in raw) {
@@ -459,7 +538,9 @@ class RichNoteController extends TextEditingController {
         final s = (item[0] as num).toInt();
         final e = (item[1] as num).toInt();
         final url = item[2]?.toString() ?? '';
-        out.add(LinkRange(start: s, end: e, url: url));
+        if (s >= 0 && e <= textLength && s <= e) {
+          out.add(LinkRange(start: s, end: e, url: url));
+        }
       }
     }
     return out;
